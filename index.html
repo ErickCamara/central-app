@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Central do Erick</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Central">
+<meta name="theme-color" content="#0f151c">
+<style>
+/* Mesmo visual da Central no Claude, com fontes do sistema para abrir 100% offline */
+:root{
+  --bg:#f3f5f7;--surface:#fff;--ink:#15202b;--muted:#5b6877;--line:#dde3ea;
+  --accent:#f2b705;--accent-ink:#3a2c00;--bubble:#d9fdd3;--bubble-ink:#10221a;--chatbg:#efeae2;--send:#1f8a5b;
+  --late:#c2412d;--today:#8a5a00;--c-nefex:#2f6fb3;--c-fe:#c0397a;--c-mv:#6b4fbb;--c-pessoal:#2e8b6a;
+  --f:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;--f-mono:ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:light}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f151c;--surface:#17202a;--ink:#e7edf3;--muted:#93a1b0;--line:#273341;
+  --accent:#f2b705;--accent-ink:#1d1600;--bubble:#144d37;--bubble-ink:#e3f5ec;--chatbg:#0b1117;--send:#2fb37a;
+  --late:#f07b66;--today:#f2c14e;--c-nefex:#6aa6e6;--c-fe:#ef7fb4;--c-mv:#a993f0;--c-pessoal:#5cc39d;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f)}
+body{padding:calc(env(safe-area-inset-top,0px) + 10px) max(14px,env(safe-area-inset-right,0px)) calc(92px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+h1{margin:0;font-size:24px;line-height:1.1;letter-spacing:-.01em}
+h1 small{display:block;font:12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.gear{all:unset;cursor:pointer;color:var(--muted);font-size:13px;padding:6px 8px;border-radius:8px}
+.sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.sync .d{width:8px;height:8px;border-radius:50%;background:var(--send);flex:none}
+.sync.off .d{background:var(--late)}.sync.wait .d{background:var(--today)}
+.sync span{flex:1;min-width:0}
+.sync button{all:unset;cursor:pointer;color:var(--ink);font-weight:600;font-size:12.5px}
+nav{display:flex;gap:2px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;padding-top:env(safe-area-inset-top,0px);margin-top:calc(-1 * env(safe-area-inset-top,0px))}
+nav button{all:unset;cursor:pointer;font-weight:500;color:var(--muted);padding:9px 12px;border-radius:8px 8px 0 0}
+nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+h2{font-size:17px;font-weight:600;margin:0 0 6px;display:flex;gap:8px;align-items:baseline}
+h2 .n{font:12px var(--f-mono);color:var(--muted);font-weight:400}
+.c-nefex{--c:var(--c-nefex)}.c-faca-e-encante{--c:var(--c-fe)}.c-mesa-viva{--c:var(--c-mv)}.c-pessoal{--c:var(--c-pessoal)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted));display:inline-block;flex:none}
+.chat{background:var(--chatbg);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;min-height:45vh}
+.msg{align-self:flex-end;max-width:88%;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.bubble{background:var(--bubble);color:var(--bubble-ink);padding:7px 10px 5px;border-radius:10px 10px 2px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.stamp{float:right;margin:6px 0 -2px 10px;font:11px var(--f-mono);opacity:.7}
+.info{font:11px var(--f-mono);color:var(--muted)}
+.empty{color:var(--muted);text-align:center;margin:auto;max-width:320px;font-size:14px}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+.summary{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.summary table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.summary th{font:11px var(--f-mono);color:var(--muted);text-transform:uppercase;text-align:right;padding:8px 10px 4px}
+.summary th:first-child,.summary td:first-child{text-align:left}
+.summary td{padding:7px 10px;border-top:1px solid var(--line);text-align:right;font-family:var(--f-mono)}
+.summary td:first-child{font-family:var(--f);font-weight:500}
+.summary .late{color:var(--late)}.summary .zero{color:var(--line)}
+ul.items{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+ul.items li{border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 0}
+.check{width:24px;height:24px;border-radius:6px;border:2px solid var(--c,var(--muted));background:none;padding:0;color:#fff;font-size:13px;cursor:pointer}
+li.done .check{background:var(--c,var(--accent))}li.done .t{text-decoration:line-through;color:var(--muted)}
+.t{all:unset;cursor:pointer;overflow-wrap:anywhere;font-weight:500;line-height:1.35}
+.meta{display:flex;gap:6px;align-items:center;font:11.5px var(--f-mono);color:var(--muted);white-space:nowrap}
+.when{padding:1px 6px;border-radius:999px;border:1px solid var(--line)}.when.late{color:var(--late);border-color:currentColor}.when.today{color:var(--today);border-color:currentColor}
+.more{padding:0 0 10px 34px;display:flex;flex-direction:column;gap:8px}
+.det{font-size:13.5px;color:var(--muted);white-space:pre-wrap}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font:500 13px var(--f);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.pill.go{background:var(--send);border-color:var(--send);color:#fff}
+.group{display:flex;flex-direction:column;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.composer{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));z-index:9}
+.composer form{max-width:720px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;min-width:0;resize:none;font:16px/1.4 var(--f);padding:10px 14px;border-radius:22px;border:1px solid var(--line);background:var(--surface);color:var(--ink);max-height:140px}
+.send{width:44px;height:44px;border-radius:50%;border:0;background:var(--send);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.setup{display:flex;flex-direction:column;gap:10px}
+.setup label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.setup input{font:16px var(--f);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13.5px;z-index:20;max-width:90vw}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><small id="hoje-label"></small>Central</h1>
+    <button class="gear" id="open-setup" type="button">Configurar</button>
+  </header>
+  <div class="sync" id="sync"><i class="d"></i><span id="sync-txt">…</span><button type="button" id="sync-now">Sincronizar</button></div>
+
+  <section class="card setup" id="setup" hidden>
+    <h2>Conectar à Central</h2>
+    <p class="hint">Faça isso uma vez, com internet. Depois o app funciona offline.</p>
+    <label>Repositório de dados<input id="cfg-repo" placeholder="ErickCamara/central-dados" autocomplete="off" autocapitalize="off"></label>
+    <label>Token do GitHub<input id="cfg-token" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off"></label>
+    <div class="btns"><button class="pill go" id="cfg-save" type="button">Salvar e testar</button><button class="pill" id="cfg-close" type="button">Fechar</button></div>
+    <p class="hint" id="cfg-msg"></p>
+  </section>
+
+  <nav role="tablist">
+    <button role="tab" data-v="anotar" aria-selected="true">Anotar</button>
+    <button role="tab" data-v="hoje" aria-selected="false">Hoje</button>
+    <button role="tab" data-v="listas" aria-selected="false">Listas</button>
+  </nav>
+
+  <main>
+    <div id="v-anotar"><div class="chat" id="chat"><div class="empty" id="chat-empty"><b>Funciona sem internet</b>Escreva como no WhatsApp. Fica guardado no celular e vai para a Central quando a conexão voltar.</div></div></div>
+    <div id="v-hoje" class="group" hidden></div>
+    <div id="v-listas" class="group" hidden></div>
+  </main>
+</div>
+<div class="composer"><form id="composer"><textarea id="msg" rows="1" placeholder="Mensagem" aria-label="Escrever anotação"></textarea><button class="send" type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6l-.1 6.5L15 12 3.3 13.9z"/></svg></button></form></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const TZ='America/Fortaleza';const DOW=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const CTX=[{id:'nefex',label:'Nefex'},{id:'faca-e-encante',label:'Faça e Encante'},{id:'mesa-viva',label:'Mesa Viva'},{id:'pessoal',label:'Pessoal'}];
+const normCtx=v=>v==='trabalho'?'nefex':CTX.some(c=>c.id===v)?v:'pessoal';
+const nowLocal=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date()).replace(' ','T');
+const todayISO=()=>nowLocal().slice(0,10);
+const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const dow=iso=>new Date(iso+'T12:00:00Z').getUTCDay();
+function fmtWhen(q){if(!q)return'';const [d,t]=q.split('T');const td=todayISO();let s;if(d===td)s='hoje';else if(d===addDays(td,1))s='amanhã';else if(d===addDays(td,-1))s='ontem';else s=DOW[dow(d)].slice(0,3)+' '+d.slice(8)+'/'+d.slice(5,7);return t?s+' '+t.slice(0,5):s}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2500)}
+const ls={get(k,d){try{const v=localStorage.getItem('c.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('c.'+k,JSON.stringify(v))}catch(e){}}};
+$('#hoje-label').textContent=new Intl.DateTimeFormat('pt-BR',{timeZone:TZ,weekday:'long',day:'numeric',month:'long'}).format(new Date());
+
+let cfg=ls.get('cfg',{repo:'',token:''});
+let fila=ls.get('fila',[]);        // o que ainda não subiu
+let enviados=ls.get('enviados',[]);// anotações já enviadas (últimos 7 dias, só para mostrar)
+let snap=ls.get('snap',null);      // cópia das tarefas da Central
+let acoesLocais=ls.get('acoes',{}); // marcações feitas aqui e ainda não refletidas no snapshot
+let syncing=false,expanded=null;
+const newId=()=>'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+// ---------- abas
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+function show(v){document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));['anotar','hoje','listas'].forEach(x=>$('#v-'+x).hidden=x!==v);ls.set('tab',v);if(v==='anotar')scrollEnd()}
+const scrollEnd=()=>requestAnimationFrame(()=>window.scrollTo(0,document.body.scrollHeight));
+
+// ---------- configuração
+function openSetup(){$('#setup').hidden=false;$('#cfg-repo').value=cfg.repo||'ErickCamara/central-dados';$('#cfg-token').value=cfg.token||''}
+$('#open-setup').onclick=()=>{$('#setup').hidden?openSetup():($('#setup').hidden=true)};
+$('#cfg-close').onclick=()=>$('#setup').hidden=true;
+$('#cfg-save').onclick=async()=>{cfg={repo:$('#cfg-repo').value.trim(),token:$('#cfg-token').value.trim()};ls.set('cfg',cfg);$('#cfg-msg').textContent='Testando…';
+  try{const r=await gh('GET','');$('#cfg-msg').textContent=r.ok?'Conectado.':'Não consegui acessar ('+r.status+'). Confira o nome do repositório e o token.';if(r.ok){$('#setup').hidden=true;sync()}}
+  catch(e){$('#cfg-msg').textContent='Sem internet agora. Salvei; testo quando a conexão voltar.'}};
+
+// ---------- GitHub
+function gh(method,path,body,accept){const url=`https://api.github.com/repos/${cfg.repo}${path?'/contents/'+path:''}`;
+  return fetch(url,{method,cache:'no-store',headers:{'Authorization':'Bearer '+cfg.token,'Accept':accept||'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body:body?JSON.stringify(body):undefined})}
+const b64=s=>btoa(unescape(encodeURIComponent(s)));
+
+// ---------- sincronizar
+async function sync(){
+  if(syncing||!cfg.repo||!cfg.token||!navigator.onLine){renderSync();return}
+  syncing=true;renderSync();
+  try{
+    while(fila.length){const op=fila[0];
+      const r=await gh('PUT','entrada/'+op.id+'.json',{message:'central: '+(op.tipo==='nota'?'anotação':'ação'),content:b64(JSON.stringify(op))});
+      if(!(r.ok||r.status===422)){if(r.status===401||r.status===403||r.status===404){toast('O GitHub recusou ('+r.status+'). Confira em Configurar.')}break}
+      fila.shift();ls.set('fila',fila);if(op.tipo==='nota'){enviados.push(Object.assign({},op,{enviado:nowLocal()}));const lim=addDays(todayISO(),-7);enviados=enviados.filter(e=>(e.criado||'')>=lim);ls.set('enviados',enviados)}}
+    const r=await gh('GET','snapshot.json',null,'application/vnd.github.raw+json');
+    if(r.ok){const s=await r.json();snap=s;ls.set('snap',s);
+      // remove marcações locais que o snapshot já reflete
+      for(const id in acoesLocais){const it=(s.itens||[]).find(i=>i.id===id);if(!it||(acoesLocais[id].em||'')<(s.gerado||''))delete acoesLocais[id]}ls.set('acoes',acoesLocais)}
+  }catch(e){}finally{syncing=false;renderAll()}}
+window.addEventListener('online',sync);window.addEventListener('offline',renderSync);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+setInterval(()=>{if(!document.hidden)sync()},60000);
+$('#sync-now').onclick=sync;
+function renderSync(){const box=$('#sync');const off=!navigator.onLine;const q=fila.length;
+  box.className='sync'+(off?' off':q?' wait':'');
+  let t;if(!cfg.token)t='Toque em Configurar para ligar o app à Central.';
+  else if(off)t=q?`Sem internet · ${q} na fila, sobe quando voltar`:'Sem internet · pode anotar normalmente';
+  else if(syncing)t='Sincronizando…';
+  else if(q)t=`${q} esperando para subir`;
+  else t='Tudo enviado'+(snap&&snap.gerado?` · tarefas de ${fmtWhen(snap.gerado)}`:'');
+  $('#sync-txt').textContent=t;$('#sync-now').hidden=off||!cfg.token}
+
+// ---------- anotar
+const ta=$('#msg');ta.oninput=()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,140)+'px'};
+$('#composer').onsubmit=e=>{e.preventDefault();const texto=ta.value.trim();if(!texto)return;ta.value='';ta.oninput();
+  fila.push({id:newId(),tipo:'nota',texto,criado:nowLocal()});ls.set('fila',fila);show('anotar');renderAll();sync()};
+function renderChat(){const chat=$('#chat');chat.querySelectorAll('.msg,.info.day').forEach(n=>n.remove());
+  const all=enviados.map(e=>Object.assign({_st:'enviado'},e)).concat(fila.filter(o=>o.tipo==='nota').map(o=>Object.assign({_st:'fila'},o))).sort((a,b)=>a.criado.localeCompare(b.criado));
+  $('#chat-empty').hidden=all.length>0;let last='';
+  all.forEach(m=>{const d=m.criado.slice(0,10);if(d!==last){last=d;const s=document.createElement('div');s.className='info day';s.style.alignSelf='center';s.textContent=fmtWhen(d);chat.append(s)}
+    const el=document.createElement('div');el.className='msg';
+    el.innerHTML=`<div class="bubble">${esc(m.texto)}<span class="stamp">${m.criado.slice(11,16)} ${m._st==='fila'?'🕓':'✓✓'}</span></div><div class="info">${m._st==='fila'?'guardado no celular':'enviado · aparece na Central em até 1h'}</div>`;chat.append(el)});
+  if(!$('#v-anotar').hidden)scrollEnd()}
+
+// ---------- tarefas (cópia da Central)
+function itensVivos(){const its=(snap&&snap.itens||[]).map(i=>Object.assign({},i,acoesLocais[i.id]&&acoesLocais[i.id].patch||{}));return its}
+const bucket=i=>{if(!i.quando)return'sem';const t=todayISO(),d=i.quando.slice(0,10);return d<t?'late':d===t?'today':'next'};
+function acao(i,patch){const op={id:newId(),tipo:'acao',item:i.id,patch,criado:nowLocal()};fila.push(op);ls.set('fila',fila);
+  acoesLocais[i.id]={patch:Object.assign({},(acoesLocais[i.id]||{}).patch,patch),em:nowLocal()};ls.set('acoes',acoesLocais);renderAll();sync()}
+function li(i,compact){const c=normCtx(i.contexto);const l=document.createElement('li');l.className='c-'+c+(i.status==='feita'?' done':'');const b=bucket(i);
+  l.innerHTML=`<div class="row"><button class="check" type="button" aria-label="Concluir ${esc(i.titulo)}">${i.status==='feita'?'✓':''}</button><button class="t" type="button">${esc(i.titulo)}</button><span class="meta">${i.quando&&!compact?`<span class="when ${b==='late'?'late':b==='today'?'today':''}">${esc(fmtWhen(i.quando))}</span>`:''}<span class="dot"></span></span></div>`;
+  l.querySelector('.check').onclick=()=>acao(i,i.status==='feita'?{status:'aberta',feito_em:null}:{status:'feita',feito_em:nowLocal()});
+  l.querySelector('.t').onclick=()=>{expanded=expanded===i.id?null:i.id;renderAll()};
+  if(expanded===i.id&&!compact){const m=document.createElement('div');m.className='more';if(i.detalhe)m.innerHTML=`<div class="det">${esc(i.detalhe)}</div>`;
+    const bt=document.createElement('div');bt.className='btns';const td=todayISO();const keep=i.quando&&i.quando.length>10?i.quando.slice(10):'';
+    [['Hoje',td],['Amanhã',addDays(td,1)]].forEach(([lb,d])=>{const x=document.createElement('button');x.className='pill';x.type='button';x.textContent=lb;x.onclick=()=>acao(i,{quando:d+keep});bt.append(x)});
+    const f=document.createElement('button');f.className='pill go';f.type='button';f.textContent='✓ Feita';f.onclick=()=>acao(i,{status:'feita',feito_em:nowLocal()});bt.append(f);m.append(bt);l.append(m)}
+  return l}
+function sec(title,list,cls){const s=document.createElement('section');s.innerHTML=`<h2><span class="${cls||''}">${title}</span><span class="n">${list.length}</span></h2>`;const ul=document.createElement('ul');ul.className='items';list.forEach(i=>ul.append(li(i)));s.append(ul);return s}
+function renderHoje(){const v=$('#v-hoje');v.innerHTML='';
+  if(!snap){v.innerHTML='<p class="hint">Ainda não tenho a cópia das suas tarefas. Conecte o app (Configurar) e abra uma vez com internet.</p>';return}
+  const open=itensVivos().filter(i=>(i.tipo==='tarefa'||i.tipo==='lembrete')&&(i.status==='aberta'||i.status==='triagem'));
+  const rows=CTX.map(c=>{const o=open.filter(i=>normCtx(i.contexto)===c.id);return{c,late:o.filter(i=>bucket(i)==='late').length,today:o.filter(i=>bucket(i)==='today').length,all:o.length}});
+  const n=(x,cls)=>`<td class="${x?cls||'':'zero'}">${x}</td>`;
+  const s=document.createElement('div');s.className='summary';s.innerHTML=`<table><thead><tr><th>Frente</th><th>Atrasadas</th><th>Hoje</th><th>Abertas</th></tr></thead><tbody>${rows.map(r=>`<tr class="c-${r.c.id}"><td><span class="dot"></span> ${r.c.label}</td>${n(r.late,'late')}${n(r.today)}${n(r.all)}</tr>`).join('')}</tbody></table>`;v.append(s);
+  const sq=(a,b)=>(a.quando||'9').localeCompare(b.quando||'9');
+  const foco=open.filter(i=>['late','today'].includes(bucket(i))).sort(sq);
+  v.append(foco.length?sec('Foco de hoje',foco,'today'):Object.assign(document.createElement('p'),{className:'hint',textContent:'Nada atrasado nem para hoje.'}));
+  const next=open.filter(i=>bucket(i)==='next').sort(sq);if(next.length)v.append(sec('Próximos dias',next));
+  const sem=open.filter(i=>bucket(i)==='sem');if(sem.length)v.append(sec('Sem data',sem));
+  const p=document.createElement('p');p.className='hint';p.textContent='Cópia da Central de '+fmtWhen(snap.gerado)+'. O que você marcar aqui vai para a Central quando sincronizar.';v.append(p)}
+function renderListas(){const v=$('#v-listas');v.innerHTML='';if(!snap){v.innerHTML='<p class="hint">Sem cópia das listas ainda.</p>';return}
+  const its=itensVivos().filter(i=>(i.tipo==='compra'||i.tipo==='lista')&&i.status!=='arquivada');const nomes=[...new Set(its.map(i=>i.lista||'Compras'))].sort();
+  nomes.forEach(nm=>{const c=document.createElement('div');c.className='card';const l=its.filter(i=>(i.lista||'Compras')===nm).sort((a,b)=>(a.status==='feita')-(b.status==='feita'));
+    c.innerHTML=`<h2>${esc(nm)}<span class="n">${l.filter(i=>i.status!=='feita').length}</span></h2>`;const ul=document.createElement('ul');ul.className='items';ul.style.borderTop='0';l.forEach(i=>ul.append(li(i,true)));c.append(ul);v.append(c)});
+  if(!nomes.length)v.innerHTML='<p class="hint">Nenhuma lista.</p>'}
+function renderAll(){renderSync();renderChat();renderHoje();renderListas()}
+
+show(ls.get('tab','anotar'));renderAll();
+if(!cfg.token)openSetup();else sync();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
