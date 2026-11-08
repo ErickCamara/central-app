@@ -226,6 +226,20 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .net::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--today);flex:none}
 .net.off::before{background:var(--late)}
 .fix .st.aplicando{color:var(--c-nefex)} .fix .st.erro{color:var(--late)}
+.fin{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.fin-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fin-head b{font-family:var(--f-display);font-weight:500;font-size:16px}
+.fin-head button{all:unset;cursor:pointer;font:12px var(--f-mono);color:var(--muted)}
+.fin-nums{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fin-num small{display:block;font:11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fin-num strong{font:600 22px var(--f-body);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.fin-num span{display:block;font-size:12px;color:var(--muted)}
+.fin-num.neg strong{color:var(--late)}
+.fin-bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.fin-bar i{display:block;height:100%;background:var(--send);border-radius:999px}
+.fin-bar.over i{background:var(--late)}
+.fin-more{font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.fin-more .row{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13.5px;z-index:20;max-width:90vw}
 @media (max-width:520px){.res li{grid-template-columns:1fr;gap:2px} h1{font-size:24px} .more{padding-left:2px} .rmeta .ctxlbl{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
@@ -262,6 +276,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
       </div>
     </div>
     <div id="view-hoje" class="group">
+      <section class="fin" id="fin" hidden></section>
       <div class="ctxbar" id="ctxbar-hoje"></div>
       <div class="summary" id="summary"></div>
       <div id="hoje-blocks" class="group"><p class="status" id="status-items">Carregando suas tarefas…</p></div>
@@ -323,7 +338,8 @@ const CTX=[{id:'nefex',label:'Nefex'},{id:'faca-e-encante',label:'Faça e Encant
 const ctxLabel=id=>(CTX.find(c=>c.id===id)||{label:id}).label;
 const normCtx=v=>v==='trabalho'?'nefex':CTX.some(c=>c.id===v)?v:'pessoal';
 const TIPOS=['tarefa','lembrete','compra','lista','nota'];
-const tipoLabel={tarefa:'tarefa',lembrete:'lembrete',compra:'compra',lista:'lista',nota:'guardado'};
+const tipoLabel={tarefa:'tarefa',lembrete:'lembrete',compra:'compra',lista:'lista',nota:'guardado',gasto:'gasto',cartao:'cartões'};
+const FIN_TIPOS=['gasto','cartao'];
 
 let db=null,sample=null,mcp=null,items=[],pedidos=[];
 let openBlocks=JSON.parse(store.get('open','{"foco":true}'));
@@ -346,6 +362,7 @@ const inCtx=i=>!ctxFilter||normCtx(i.contexto)===ctxFilter;
 
 // ---------- entender a mensagem
 function guess(text){
+  const fg=finGuess(text);if(fg)return fg;
   let t=text.trim(),low=t.toLowerCase();const out={tipo:'tarefa',titulo:t,detalhe:'',contexto:null,quando:null,lista:null};
   const tag=low.match(/#(nefex|trabalho|fe|encante|faca|mesa|mv|rpg|pessoal|casa)\b/);
   if(tag){const k=tag[1];out.contexto=/nefex|trabalho/.test(k)?'nefex':/fe|encante|faca/.test(k)?'faca-e-encante':/mesa|mv|rpg/.test(k)?'mesa-viva':'pessoal';t=t.replace(/#\w+/,'').trim()}
@@ -382,8 +399,11 @@ Frentes da vida dele (campo "contexto"):
 Listas que já existem: ${listNames().join(', ')}.
 
 Responda SÓ um objeto JSON:
-{"tipo":"tarefa|lembrete|compra|lista|nota","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null"}
+{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|null","cartoes":{"C6":número,…}|null}
 Regras:
+- gasto: ele conta um dinheiro que JÁ gastou ("gastei 80 no mercado", "paguei 45 de uber no pix", "almoço 32"). valor = número em reais; titulo = do que foi o gasto (curto, sem o valor); forma "pix" se falar pix/débito/dinheiro/transferência, senão "cartao"; cartao = qual cartão se ele disser (C6, Nubank/Nu, Inter, Itaú), senão null.
+- cartao: ele informa o valor atual da fatura/parcial de um ou mais cartões ("C6 3.900", "3753,45 - C6 / 3745,62 - Itaú"). cartoes = objeto com cada cartão citado e seu valor total atual. titulo "Atualização dos cartões".
+- Para gasto/cartao use contexto "pessoal", a não ser que fale da Nefex, Faça e Encante ou Mesa Viva.
 - tarefa: algo a fazer. lembrete: algo a lembrar num momento (ligar, cobrar, pagar numa data). compra: algo a comprar (lista "Compras"). lista: item para lista temática (filme, série, livro, lugar, presente, ideia…), use uma lista existente se servir, senão um nome curto. nota: informação para guardar e consultar depois.
 - titulo: curto; tarefa/lembrete começa com verbo; sem palavras de data/hora; mantenha nomes próprios.
 - detalhe: o resto útil (ou ""). Subitens em várias linhas vão no detalhe.
@@ -399,6 +419,8 @@ Anotação:
     if(CTX.some(c=>c.id===r.contexto))o.contexto=r.contexto;
     o.quando=(typeof r.quando==='string'&&/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(r.quando))?r.quando:null;
     o.lista=(typeof r.lista==='string'&&r.lista.trim()&&(o.tipo==='lista'||o.tipo==='compra'))?r.lista.trim().slice(0,60):(o.tipo==='compra'?'Compras':null);
+    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null}
+    if(o.tipo==='cartao'){const cs={};for(const k in (r.cartoes||{})){const nm=FIN_CARTOES.find(c=>c.toLowerCase()===String(k).toLowerCase());const v=Number(r.cartoes[k]);if(nm&&v>=0)cs[nm]=Math.round(v*100)/100}if(!Object.keys(cs).length)return null;o.cartoes=cs;o.quando=null;o.lista=null}
     return o}
   catch(e){if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code))sample=null;return null}}
 
@@ -411,6 +433,80 @@ async function toCalendar(id,doc){
     const p=r&&r.payload;await save(id,{gcal:String((p&&(p.id||p.eventId||(p.event&&p.event.id)))||'criado')});toast('Também coloquei na sua Google Agenda')}
   catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null}}
 
+// ---------- Finanças: planilha do Google + resumo no Hoje
+const FIN_SHEET='1pyj6XEf5ppYOnkZbcG6gcNpaxq_VMdLGd1ysCK-440A';
+const FIN_MES={id:'2026-11',nome:'novembro',fim:'2026-11-30'}; // tabela do mês na aba Gastos (linhas 43–78)
+const FIN_CARTOES=['C6','Nubank','Inter','Itaú'];const FIN_CEL={C6:'G44',Nubank:'G45',Inter:'G46','Itaú':'G47'};
+let finOpen=false,finBusy=false;
+const brl=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const brl2=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function parseBRL(x){if(typeof x==='number')return x;if(x==null||x==='')return 0;const neg=/-/.test(String(x));const n=parseFloat(String(x).replace(/[^\d,]/g,'').replace(',','.'))||0;return neg?-n:n}
+function parseValor(t){const m=String(t).match(/(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/);return m?parseBRL(m[1].includes(',')||/\.\d{3}/.test(m[1])?m[1]:m[1].replace('.',',')):null}
+function cartaoDe(t){const l=t.toLowerCase();if(/\bc6\b/.test(l))return'C6';if(/\bnu(bank)?\b/.test(l))return'Nubank';if(/\binter\b/.test(l))return'Inter';if(/\bita[uú](?![a-z])/.test(l))return'Itaú';return null}
+function finGuess(text){const t=text.trim(),l=t.toLowerCase();
+  if(/^(gastei|paguei|comprei|gasto)\b/.test(l)){const v=parseValor(t);if(!v)return null;
+    const desc=t.replace(/^(gastei|paguei|comprei|gasto)\s*/i,'').replace(/r?\$?\s*\d[\d.,]*\s*(reais)?/i,'').replace(/\b(no|na|de|com|em)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/^\s*(no|na|de|com|em)\s+/i,'').trim()||'Gasto';
+    return{tipo:'gasto',titulo:desc.charAt(0).toUpperCase()+desc.slice(1),detalhe:'',contexto:'pessoal',quando:null,lista:null,valor:v,forma:/\b(pix|d[ée]bito|dinheiro|transfer)/.test(l)?'pix':'cartao',cartao:cartaoDe(t)}}
+  const cs={};t.split(/\n|;|\//).forEach(ln=>{const c=cartaoDe(ln),v=parseValor(ln);if(c&&v!=null)cs[c]=v});
+  if(Object.keys(cs).length&&(/fatura|parcial|cart[aã]o|atualiza/.test(l)||Object.keys(cs).length>1||/^\s*(c6|nubank|nu|inter|ita[uú])(?![a-z])|\b(c6|nubank|nu|inter|ita[uú])\s*$/i.test(t)))
+    return{tipo:'cartao',titulo:'Atualização dos cartões',detalhe:'',contexto:'pessoal',quando:null,lista:null,cartoes:cs};
+  return null}
+async function sheet(tool,args){const r=await mcp.callTool('Google Sheets',tool,Object.assign({spreadsheetId:FIN_SHEET},args));return r&&r.payload}
+const finEst=()=>items.find(i=>i.id==='_financas');
+function dias(a,b){return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/864e5)}
+function finSemana(est,livre){const t=todayISO();const seg=addDays(t,-((dow(t)+6)%7));let fimSem=addDays(seg,6);if(fimSem>FIN_MES.fim)fimSem=FIN_MES.fim;
+  let s=est&&est.semana&&est.semana.inicio===seg?est.semana:null;
+  if(!s){const base=Math.max(0,livre);s={inicio:seg,livre_inicio:livre,teto:Math.round(base*(dias(t,fimSem)+1)/(dias(t,FIN_MES.fim)+1)*100)/100}}
+  return s}
+async function finRefresh(extra){if(!mcp||!navigator.onLine)return;
+  try{const g=await sheet('get_values',{range:'Gastos!G44:G78'});const p=await sheet('get_values',{range:'Plano!B7'});
+    const v=(g&&g.values)||[];const cel=i=>parseBRL((v[i]||[])[0]);
+    const restante=cel(34),guardar=parseBRL(((p&&p.values)||[[0]])[0][0]);const livre=Math.round((restante-guardar)*100)/100;
+    const cartoes={};FIN_CARTOES.forEach((c,i)=>cartoes[c]=cel(i));
+    const est=finEst();const semana=finSemana(est,livre);
+    const doc=Object.assign({tipo:'sistema',status:'sistema',mes:FIN_MES.id,restante,guardar,livre,cartoes,semana,atualizado:nowLocal(),cartoes_em:(est&&est.cartoes_em)||null},extra||{});
+    await write({k:'add',c:'itens',id:'_financas',data:doc})}catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null}}
+async function finProcess(id,doc){
+  if(!mcp||!navigator.onLine||doc.fin!=='pendente')return;
+  if(todayISO()>FIN_MES.fim){toast('A tabela de '+FIN_MES.nome+' fechou. Me peça no chat para preparar o próximo mês');return}
+  try{
+    if(doc.tipo==='gasto'){const d=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
+      await sheet('append_values',{range:"'Lançamentos'!A1",values:[[d,doc.titulo,doc.valor,doc.forma==='pix'?'Pix/débito':'Cartão',doc.cartao||'',doc.forma==='pix'?'pix':'pendente',FIN_MES.id,id]]})}
+    else{for(const c in doc.cartoes)await sheet('update_values',{range:'Gastos!'+FIN_CEL[c],values:[[doc.cartoes[c]]]});
+      const r=await sheet('get_values',{range:"'Lançamentos'!A2:H1000"});const rows=(r&&r.values)||[];
+      const quando=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
+      const sit=rows.map(x=>{const st=x[5]||'';const card=x[4]||'';if(x[3]==='Cartão'&&st==='pendente'&&(!card||doc.cartoes[card]!=null))return['na fatura'];return[st]});
+      if(sit.length)await sheet('update_values',{range:"'Lançamentos'!F2:F"+(sit.length+1),values:sit});
+    }
+    await save(id,{fin:'na planilha'});await finRefresh(doc.tipo==='cartao'?{cartoes_em:nowLocal()}:null);
+    if(doc.tipo==='gasto'){const e=finEst();if(e)toast(`Anotado. Sobram ${brl(e.semana.teto-(e.semana.livre_inicio-e.livre))} na semana`)}
+  }catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null;toast('Não consegui atualizar a planilha agora. Tento de novo depois')}}
+async function finUndo(i){await save(i.id,{status:'arquivada'});
+  if(!mcp||i.fin!=='na planilha'||i.tipo!=='gasto')return;
+  try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];const k=rows.findIndex(x=>x[0]===i.id);
+    if(k>=0){await sheet('update_values',{range:`'Lançamentos'!A${k+2}:H${k+2}`,values:[['','','','','','desfeito','','']]})}await finRefresh()}catch(e){}}
+async function finSync(){if(finBusy)return;finBusy=true;try{for(const i of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada'&&!x.classificando))await finProcess(i.id,i);await finRefresh()}finally{finBusy=false}}
+function renderFin(){const box=$('#fin');const e=finEst();if(!e){box.hidden=true;return}box.hidden=false;
+  const resta=Math.round((e.semana.teto-(e.semana.livre_inicio-e.livre))*100)/100;const pct=e.semana.teto>0?Math.max(0,Math.min(100,resta/e.semana.teto*100)):0;
+  const fimMes=todayISO()>FIN_MES.fim;const pend=items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada').length;
+  const ult=items.filter(x=>x.tipo==='gasto'&&x.status!=='arquivada').sort((a,b)=>(b.criado||'').localeCompare(a.criado||'')).slice(0,3);
+  box.innerHTML=`<div class="fin-head"><b>Finanças · ${FIN_MES.nome}</b><button type="button" id="fin-tg" aria-expanded="${finOpen}">${finOpen?'menos':'detalhes'}</button></div>
+  ${fimMes?'<p class="hint">O mês da planilha fechou. Me peça no chat para preparar a tabela do próximo mês.</p>':''}
+  <div class="fin-nums"><div class="fin-num${e.livre<0?' neg':''}"><small>Livre no mês</small><strong>${brl(e.livre)}</strong><span>já separando ${brl(e.guardar)} para guardar</span></div>
+  <div class="fin-num${resta<0?' neg':''}"><small>Esta semana</small><strong>${brl(resta)}</strong><span>de ${brl(e.semana.teto)} até domingo</span></div></div>
+  <div class="fin-bar${resta<0?' over':''}"><i style="width:${pct}%"></i></div>
+  ${finOpen?`<div class="fin-more">${FIN_CARTOES.map(c=>`<div class="row"><span>${c}</span><span>${brl2(e.cartoes[c]||0)}</span></div>`).join('')}
+   <div class="row"><span>Cartões atualizados</span><span>${e.cartoes_em?esc(fmtWhen(e.cartoes_em.slice(0,10))):'—'}</span></div>
+   ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
+   <div>Para lançar, escreva “gastei 80 no mercado”. Para atualizar o cartão, “C6 3.900”.</div></div>`:''}
+  ${pend?`<p class="hint">${pend} lançamento${pend>1?'s':''} esperando para ir à planilha.</p>`:''}`;
+  box.querySelector('#fin-tg').onclick=()=>{finOpen=!finOpen;renderFin()}}
+function finChips(i,cl){
+  if(i.tipo==='gasto'){cl.append(el('span','',`${brl2(i.valor||0)} · ${i.forma==='pix'?'pix/débito':'cartão'+(i.cartao?' '+esc(i.cartao):'')}`))}
+  else cl.append(el('span','',Object.entries(i.cartoes||{}).map(([c,v])=>c+' '+brl2(v)).join(' · ')));
+  cl.append(el('span','',i.fin==='na planilha'?'na planilha ✓':'vai para a planilha'));
+  if(i.tipo==='gasto')cl.append(pill('desfazer',()=>finUndo(i),'','Desfazer este gasto'))}
+
 // ---------- escrever
 const ta=$('#msg');const grow=()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,140)+'px'};
 ta.addEventListener('input',grow);
@@ -420,16 +516,17 @@ $('#composer').addEventListener('submit',async e=>{
   e.preventDefault();const text=ta.value.trim();if(!text)return;
   ta.value='';grow();
   const g=guess(text);const online=navigator.onLine&&!!db&&!!sample;
-  const doc={tipo:g.tipo,titulo:g.titulo,detalhe:g.detalhe,contexto:g.contexto,status:g.tipo==='nota'?'guardada':'aberta',origem:'painel',bruto:text,criado:nowLocal(),classificando:online,classificar:!online&&!!(sample||!navigator.onLine)};
+  const doc={tipo:g.tipo,titulo:g.titulo,detalhe:g.detalhe,contexto:g.contexto,status:FIN_TIPOS.includes(g.tipo)?'registrado':g.tipo==='nota'?'guardada':'aberta',origem:'painel',bruto:text,criado:nowLocal(),classificando:online,classificar:!online&&!!(sample||!navigator.onLine)};
   if(g.quando)doc.quando=g.quando;if(g.lista)doc.lista=g.lista;
+  for(const k of ['valor','forma','cartao','cartoes'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
   const id=newId();const r=await write({k:'add',c:'itens',id,data:doc});
   if(r==='fail'){ta.value=text;grow();return}
   if(curTab()!=='conversa')toast('Anotado ✓');
   if(looksSecret(text))toast('Parece uma senha. O melhor lugar para ela é um gerenciador de senhas');
-  if(!online)return;
+  if(!online){if(FIN_TIPOS.includes(doc.tipo))finProcess(id,doc);return}
   const c=await classify(text);const patch={classificando:false};
-  if(c){Object.assign(patch,c);patch.status=c.tipo==='nota'?'guardada':'aberta';patch.quando=c.quando||g.quando||null}
-  await save(id,patch);toCalendar(id,Object.assign({},doc,patch))});
+  if(c){Object.assign(patch,c);patch.status=FIN_TIPOS.includes(c.tipo)?'registrado':c.tipo==='nota'?'guardada':'aberta';patch.quando=c.quando||g.quando||null;if(FIN_TIPOS.includes(c.tipo))patch.fin='pendente'}
+  await save(id,patch);const fim=Object.assign({},doc,patch);toCalendar(id,fim);if(FIN_TIPOS.includes(fim.tipo))finProcess(id,fim)});
 
 // ---------- funciona sem internet: cópia local + fila que sincroniza quando a conexão volta
 const newId=()=>'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
@@ -515,7 +612,7 @@ const sortQ=(a,b)=>(a.quando||'9999').localeCompare(b.quando||'9999')||(b.criado
 
 // ---------- Hoje
 function renderHoje(){
-  const y=window.scrollY;ctxBar($('#ctxbar-hoje'),()=>{renderHoje();renderHist()});
+  const y=window.scrollY;renderFin();ctxBar($('#ctxbar-hoje'),()=>{renderHoje();renderHist()});
   const tasks=items.filter(i=>i.tipo==='tarefa'||i.tipo==='lembrete');
   const open=tasks.filter(i=>i.status==='aberta'||i.status==='triagem');
   // resumo por frente
@@ -565,6 +662,7 @@ function renderConversa(){
     const cl=el('div','classif');m.append(cl);
     if(i.classificando)cl.textContent='organizando…';
     else if(i.status==='arquivada')cl.append('arquivada ',pill('↩ restaurar',()=>save(i.id,{status:i.tipo==='nota'?'guardada':'aberta'})));
+    else if(FIN_TIPOS.includes(i.tipo)){finChips(i,cl)}
     else if(editCtx===i.id){CTX.forEach(x=>cl.append(pill(`<span class="dot"></span>${esc(x.label)}`,()=>{editCtx=null;save(i.id,{contexto:x.id})},'c-'+x.id+(x.id===c?' on':''))))}
     else{
       cl.append(pill(tipoLabel[i.tipo]||i.tipo,()=>{const nx=TIPOS[(TIPOS.indexOf(i.tipo)+1)%TIPOS.length];const p={tipo:nx,status:nx==='nota'?'guardada':'aberta'};if(nx==='compra')p.lista='Compras';if(nx==='lista'&&!i.lista)p.lista='Ideias';save(i.id,p)},'','Mudar tipo'));
@@ -701,7 +799,7 @@ function highlight(text,terms){let h=linkify(esc(text));if(!terms.length)return 
   return h.replace(/(<a [^>]*>.*?<\/a>)|([^<]+)/g,(m,a,txt)=>a?a:txt.replace(rx,'<mark>$1</mark>'))}
 function runSearch(){
   const raw=$('#q').value.trim();const terms=raw?norm(raw).split(/\s+/).filter(Boolean):[];
-  const own=items.filter(i=>i.status!=='arquivada').map(i=>({d:(i.criado||'').slice(0,16),t:(i.bruto||i.titulo)+(i.detalhe?'\n'+i.detalhe:''),k:i.tipo==='nota'?'nota':'item',_n:norm((i.bruto||'')+' '+i.titulo+' '+(i.detalhe||'')+' '+(i.lista||'')+' '+ctxLabel(normCtx(i.contexto)))}));
+  const own=items.filter(i=>i.status!=='arquivada'&&i.tipo!=='sistema').map(i=>({d:(i.criado||'').slice(0,16),t:(i.bruto||i.titulo)+(i.detalhe?'\n'+i.detalhe:''),k:i.tipo==='nota'?'nota':'item',_n:norm((i.bruto||'')+' '+i.titulo+' '+(i.detalhe||'')+' '+(i.lista||'')+' '+ctxLabel(normCtx(i.contexto)))}));
   let pool=own.concat(archive);if(kindFilter)pool=pool.filter(x=>x.k===kindFilter);
   const hits=terms.length?pool.filter(x=>terms.every(t=>x._n.includes(t))):pool;hits.sort((a,b)=>b.d.localeCompare(a.d));
   $('#status-mem').textContent=terms.length?`${hits.length} resultado${hits.length===1?'':'s'} para “${raw}”${hits.length>200?' · mostrando os 200 mais recentes':''}`:`${archive.length.toLocaleString('pt-BR')} anotações do WhatsApp + ${own.length} da Central. Mostrando as mais recentes.`;
@@ -726,7 +824,7 @@ try{const m=sessionStorage.getItem('central.ajuste');if(m){sessionStorage.remove
   db.collection('pedidos').onSnapshot(snap=>{pedidos=snap.docs.map(d=>Object.assign({id:d.id},d.data()));outbox.filter(o=>o.c==='pedidos').forEach(applyLocal);store.set('pedidos',JSON.stringify(pedidos));renderPedidos()},()=>{});
   if(startTab==='memoria')loadArchive();
   use('sample').then(s=>{sample=s;classifyPending()}).catch(()=>{});
-  use('mcp').then(m=>{mcp=m}).catch(()=>{});
+  use('mcp').then(m=>{mcp=m;finSync()}).catch(()=>{});
   use('artifact').then(a=>{artifactApi=a}).catch(()=>{});
   db.doc('sistema/anterior').get().then(s=>{$('#fix-undo').hidden=!s.exists}).catch(()=>{});
   // depois de carregar o histórico uma vez com internet, ele fica guardado para uso offline
