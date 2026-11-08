@@ -49,6 +49,13 @@ const db={
     async set(d){if(c==='itens'){if(d&&d.bruto&&!d.classificando)d=Object.assign({},d,{classificar:true});push('set',id,d)}},
     async update(u){if(c==='itens')push('update',id,u)}}}};
 window.claude={use:async n=>n==='db'?db:null};
+// botão "Atualizar" no app: sobe a fila e abre a Central com #atualizar, que roda a importação na hora
+window.__centralAtualizar=function(){
+  if(!navigator.onLine){alertBar('Sem internet. Suas alterações sobem quando a conexão voltar.');return}
+  if(!cfg.token){const b=document.getElementById('app-sync');if(b)b.click();return}
+  window.open('https://claude.ai/artifact/QJbVHyUgVTKaajRbM3g9m6#atualizar','_blank');
+  sync();setTimeout(sync,90000);setTimeout(sync,150000)};
+function alertBar(m){lastErr=m;renderBar();setTimeout(()=>{lastErr='';renderBar()},4000)}
 
 // ---------- barra de sincronização + configuração
 function renderBar(){const b=document.getElementById('app-sync');if(!b)return;let q=ops.filter(o=>!o.enviado).length;try{q+=(JSON.parse(localStorage.getItem('central.outbox')||'[]')||[]).length}catch(e){}const off=!navigator.onLine;
@@ -240,6 +247,8 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .fin-bar.over i{background:var(--late)}
 .fin-more{font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .fin-more .row{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
+.head-acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#sync-now[disabled]{opacity:.6;cursor:default}
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13.5px;z-index:20;max-width:90vw}
 @media (max-width:520px){.res li{grid-template-columns:1fr;gap:2px} h1{font-size:24px} .more{padding-left:2px} .rmeta .ctxlbl{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
@@ -248,7 +257,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 <div class="wrap">
   <header>
     <h1><small id="today-label">Hoje</small>Central do Erick</h1>
-    <button class="btn ghost fixbtn" id="fix-open" type="button" aria-expanded="false">Ajustar a Central <span class="badge" id="fix-badge" hidden></span></button>
+    <div class="head-acts"><button class="btn ghost" id="sync-now" type="button">↻ Atualizar</button><button class="btn ghost fixbtn" id="fix-open" type="button" aria-expanded="false">Ajustar a Central <span class="badge" id="fix-badge" hidden></span></button></div>
   </header>
 
   <section class="fix" id="fix" hidden>
@@ -700,6 +709,21 @@ function renderListas(){
     c.append(f);box.append(c)})}
 
 // ---------- Ajustes
+// ---------- Atualizar agora: puxa a planilha e roda já a importação do app do celular (sem esperar a hora cheia)
+const IMPORT_TASK='trig_01GvX48wAEXHNjtr9x4DUQ9s';
+async function atualizarAgora(auto){
+  if(window.__centralAtualizar)return window.__centralAtualizar();
+  const b=$('#sync-now');if(b.disabled)return;
+  if(!navigator.onLine){toast('Sem internet. Atualizo quando a conexão voltar');return}
+  b.disabled=true;b.textContent='↻ Atualizando…';
+  try{await flush();await finSync();
+    let ult=0;try{ult=+localStorage.getItem('central.importou')||0}catch(e){}
+    if(mcp&&Date.now()-ult>3*60e3){try{await mcp.callTool('Claude Code Remote','fire_trigger',{trigger_id:IMPORT_TASK});try{localStorage.setItem('central.importou',String(Date.now()))}catch(e){}
+        toast('Atualizado. O que veio do celular chega aqui em 1 a 2 minutos')}
+      catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))toast('Planilha atualizada. Para puxar o celular na hora, permita o acesso pedido');else toast('Planilha atualizada. Não consegui puxar o celular agora')}}
+    else toast(mcp?'Atualizado. A importação do celular já foi pedida há pouco':'Atualizado')}
+  finally{setTimeout(()=>{b.disabled=false;b.textContent='↻ Atualizar'},4000)}}
+$('#sync-now').addEventListener('click',()=>atualizarAgora());
 $('#fix-open').addEventListener('click',()=>{const s=$('#fix');s.hidden=!s.hidden;$('#fix-open').setAttribute('aria-expanded',String(!s.hidden));if(!s.hidden)$('#fix-text').focus()});
 $('#fix-send').addEventListener('click',async()=>{const t=$('#fix-text').value.trim();if(!t)return;
   const id=newId();await write({k:'add',c:'pedidos',id,data:{texto:t,status:'pendente',criado:nowLocal()}});$('#fix-text').value='';
@@ -830,7 +854,7 @@ try{const m=sessionStorage.getItem('central.ajuste');if(m){sessionStorage.remove
   db.collection('pedidos').onSnapshot(snap=>{pedidos=snap.docs.map(d=>Object.assign({id:d.id},d.data()));outbox.filter(o=>o.c==='pedidos').forEach(applyLocal);store.set('pedidos',JSON.stringify(pedidos));renderPedidos()},()=>{});
   if(startTab==='memoria')loadArchive();
   use('sample').then(s=>{sample=s;classifyPending()}).catch(()=>{});
-  use('mcp').then(m=>{mcp=m;finSync()}).catch(()=>{});
+  use('mcp').then(m=>{mcp=m;if(location.hash==='#atualizar'){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}atualizarAgora(true)}else finSync()}).catch(()=>{});
   use('artifact').then(a=>{artifactApi=a}).catch(()=>{});
   db.doc('sistema/anterior').get().then(s=>{$('#fix-undo').hidden=!s.exists}).catch(()=>{});
   // depois de carregar o histórico uma vez com internet, ele fica guardado para uso offline
