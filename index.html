@@ -50,15 +50,16 @@ const db={
     async update(u){if(c==='itens')push('update',id,u)}}}};
 window.claude={use:async n=>n==='db'?db:null};
 // botão "Atualizar" no app: sobe a fila e abre a Central com #atualizar, que roda a importação na hora
-window.__centralAtualizar=function(){
+window.__centralAtualizar=async function(){
   if(!navigator.onLine){alertBar('Sem internet. Suas alterações sobem quando a conexão voltar.');return}
   if(!cfg.token){const b=document.getElementById('app-sync');if(b)b.click();return}
-  window.open('https://claude.ai/artifact/QJbVHyUgVTKaajRbM3g9m6#atualizar','_blank');
-  sync();setTimeout(sync,90000);setTimeout(sync,150000)};
-function alertBar(m){lastErr=m;renderBar();setTimeout(()=>{lastErr='';renderBar()},4000)}
+  const b=document.getElementById('app-atualizar');if(b)b.textContent='↻ …';
+  await sync();if(b)b.textContent='↻ Atualizar';
+  alertBar(lastErr||'Atualizado ✓ Os números já contam o que você lançou; a planilha recebe na próxima rodada.')};
+function alertBar(m){const b=document.getElementById('app-sync');const sp=b&&b.querySelector('span');if(sp){sp.textContent=m;window.__alertAte=Date.now()+4500;clearTimeout(alertBar.t);alertBar.t=setTimeout(renderBar,4600)}}
 
 // ---------- barra de sincronização + configuração
-function renderBar(){const b=document.getElementById('app-sync');if(!b)return;let q=ops.filter(o=>!o.enviado).length;try{q+=(JSON.parse(localStorage.getItem('central.outbox')||'[]')||[]).length}catch(e){}const off=!navigator.onLine;
+function renderBar(){const b=document.getElementById('app-sync');if(!b||Date.now()<(window.__alertAte||0))return;let q=ops.filter(o=>!o.enviado).length;try{q+=(JSON.parse(localStorage.getItem('central.outbox')||'[]')||[]).length}catch(e){}const off=!navigator.onLine;
   b.dataset.st=!cfg.token||lastErr?'erro':off?'off':q||syncing?'wait':'ok';
   const fmt=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+' '+s.slice(11,16):'';
   b.querySelector('span').textContent=!cfg.token?'Toque aqui e cole o token do GitHub para ligar o app à Central.':lastErr?lastErr:off?(q?`Sem internet · ${q} alteraç${q>1?'ões':'ão'} guardada${q>1?'s':''} no celular`:'Sem internet · pode ver e anotar normalmente'):syncing?'Sincronizando…':q?`${q} esperando para subir`:'Tudo enviado'+(base.gerado?' · cópia da Central de '+fmt(base.gerado):'')+' · chega na Central em até 1h'}
@@ -503,7 +504,13 @@ async function finUndo(i){await save(i.id,{status:'arquivada'});
   try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];const k=rows.findIndex(x=>x[0]===i.id);
     if(k>=0){await sheet('update_values',{range:`'Lançamentos'!A${k+2}:H${k+2}`,values:[['','','','','','desfeito','','']]})}await finRefresh()}catch(e){}}
 async function finSync(){if(finBusy)return;finBusy=true;try{for(const i of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada'&&!x.classificando))await finProcess(i.id,i);await finRefresh()}finally{finBusy=false}}
-function renderFin(){const box=$('#fin');const e=finEst();if(!e){box.hidden=true;return}box.hidden=false;
+function finAjuste(e){ // lançamentos ainda não confirmados na planilha já contam aqui, na hora
+  let d=0,n=0;const novos=Object.assign({},e.cartoes);
+  for(const x of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada')){n++;
+    if(x.tipo==='gasto')d+=Number(x.valor)||0;else for(const c in (x.cartoes||{})){d+=(Number(x.cartoes[c])||0)-(Number(novos[c])||0);novos[c]=Number(x.cartoes[c])||0}}
+  return{d:Math.round(d*100)/100,n,cartoes:novos}}
+function renderFin(){const box=$('#fin');const e0=finEst();if(!e0){box.hidden=true;return}box.hidden=false;
+  const aj=finAjuste(e0);const e=Object.assign({},e0,{livre:e0.livre-aj.d,cartoes:aj.cartoes});
   const resta=Math.round((e.semana.teto-(e.semana.livre_inicio-e.livre))*100)/100;const pct=e.semana.teto>0?Math.max(0,Math.min(100,resta/e.semana.teto*100)):0;
   const fimMes=todayISO()>FIN_MES.fim;const pend=items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada').length;
   const ult=items.filter(x=>x.tipo==='gasto'&&x.status!=='arquivada').sort((a,b)=>(b.criado||'').localeCompare(a.criado||'')).slice(0,3);
@@ -516,7 +523,7 @@ function renderFin(){const box=$('#fin');const e=finEst();if(!e){box.hidden=true
    <div class="row"><span>Cartões atualizados</span><span>${e.cartoes_em?esc(fmtWhen(e.cartoes_em.slice(0,10))):'—'}</span></div>
    ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
    <div>Para lançar, escreva “gastei 80 no mercado”. Para atualizar o cartão, “C6 3.900”.</div></div>`:''}
-  ${pend?`<p class="hint">${pend} lançamento${pend>1?'s':''} esperando para ir à planilha.</p>`:''}`;
+  ${pend?`<p class="hint">Já conta ${pend} lançamento${pend>1?'s':''} que ainda vai${pend>1?'o':''} para a planilha.</p>`:''}`;
   box.querySelector('#fin-tg').onclick=()=>{finOpen=!finOpen;renderFin()}}
 function finChips(i,cl){
   if(i.tipo==='gasto'){cl.append(el('span','',`${brl2(i.valor||0)} · ${i.forma==='pix'?'pix/débito':'cartão'+(i.cartao?' '+esc(i.cartao):'')}`))}
