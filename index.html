@@ -65,6 +65,8 @@ function renderBar(){const b=document.getElementById('app-sync');if(!b)return;le
 function mountBar(){
   const st=document.createElement('style');st.textContent=`#fix-open{display:none!important}
 #app-sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 10px;cursor:pointer}
+#app-sync span{flex:1;min-width:0}
+#app-sync button{all:unset;cursor:pointer;font-weight:600;color:var(--ink);white-space:nowrap;padding:2px 4px}
 #app-sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--send,#1f8a5b);flex:none}
 #app-sync[data-st=wait]::before{background:var(--today)}#app-sync[data-st=off]::before,#app-sync[data-st=erro]::before{background:var(--late)}
 #app-cfg{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
@@ -72,12 +74,12 @@ function mountBar(){
 #app-cfg input{font:16px var(--f-body,system-ui);padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 #app-cfg .row{display:flex;gap:8px;flex-wrap:wrap}`;document.head.append(st);
   const wrap=document.querySelector('.wrap');const header=wrap&&wrap.querySelector('header');if(!wrap)return;
-  const bar=document.createElement('div');bar.id='app-sync';bar.setAttribute('role','button');bar.tabIndex=0;bar.innerHTML='<span></span>';
+  const bar=document.createElement('div');bar.id='app-sync';bar.setAttribute('role','button');bar.tabIndex=0;bar.innerHTML='<span></span><button type="button" id="app-atualizar">↻ Atualizar</button>';
   const panel=document.createElement('section');panel.id='app-cfg';panel.hidden=true;
   panel.innerHTML=`<strong>Ligar o app à Central</strong><label>Repositório<input id="app-repo" autocomplete="off" autocapitalize="off"></label><label>Token do GitHub<input id="app-token" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off"></label><div class="row"><button class="btn go" id="app-save" type="button">Salvar e sincronizar</button><button class="btn ghost" id="app-close" type="button">Fechar</button></div><p class="hint" id="app-msg"></p>`;
   (header?header.after(bar):wrap.prepend(bar));bar.after(panel);
   const open=()=>{panel.hidden=!panel.hidden;panel.querySelector('#app-repo').value=cfg.repo;panel.querySelector('#app-token').value=cfg.token};
-  bar.onclick=open;bar.onkeydown=e=>{if(e.key==='Enter')open()};
+  bar.onclick=open;bar.querySelector('#app-atualizar').onclick=e=>{e.stopPropagation();window.__centralAtualizar()};bar.onkeydown=e=>{if(e.key==='Enter')open()};
   panel.querySelector('#app-close').onclick=()=>panel.hidden=true;
   panel.querySelector('#app-save').onclick=async()=>{cfg={repo:panel.querySelector('#app-repo').value.trim(),token:panel.querySelector('#app-token').value.trim()};LS.set('cfg',cfg);
     const msg=panel.querySelector('#app-msg');if(!navigator.onLine){msg.textContent='Salvo. Sincronizo quando a internet voltar.';return}
