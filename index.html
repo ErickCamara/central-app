@@ -260,6 +260,14 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .ev.passou{opacity:.45}
 .head-acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 #sync-now[disabled]{opacity:.6;cursor:default}
+.row1.g{grid-template-columns:auto auto 1fr auto}
+.grip{all:unset;cursor:grab;touch-action:none;color:var(--muted);font-size:15px;line-height:1;padding:6px 2px;letter-spacing:-2px;user-select:none;-webkit-user-select:none}
+li.dragging{background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.18);border-radius:8px;position:relative;z-index:6;opacity:.95}
+body.arrastando{user-select:none;-webkit-user-select:none;cursor:grabbing}
+.block-head.drop{outline:2px dashed var(--accent);outline-offset:3px;border-radius:8px}
+.when.risk{color:var(--today);border-color:currentColor;font-weight:500}
+.when.risk.urg{color:var(--late)}
+.riskline{font-size:12.5px;color:var(--today);margin:-2px 0 6px}
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13.5px;z-index:20;max-width:90vw}
 @media (max-width:520px){.res li{grid-template-columns:1fr;gap:2px} h1{font-size:24px} .more{padding-left:2px} .rmeta .ctxlbl{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
@@ -343,6 +351,10 @@ const nowLocal=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:TZ,year:'numeric',m
 const todayISO=()=>nowLocal().slice(0,10);
 function addDays(iso,n){const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 const dow=iso=>new Date(iso+'T12:00:00Z').getUTCDay();
+function sextaAlvo(){const t=todayISO();let n=(5-dow(t)+7)%7;if(dow(t)===6||dow(t)===0)n=(5-dow(t)+7)%7;return addDays(t,n)}
+function sextaSemana(){const t=todayISO();const w=dow(t);if(w===6||w===0)return null;return addDays(t,5-w)}
+function risco(i){if(!i.quando||i.status!=='aberta')return null;const d=i.quando.slice(0,10),t=todayISO();if(d<=t)return null;const sx=sextaSemana();const falta=dias(t,d);
+  if(falta===1)return{urg:true,txt:'amanhã · faça hoje'};if(sx&&d<=sx)return{urg:false,txt:'até '+DOW[dow(d)].slice(0,3)+' · '+falta+'d'};return null}
 function nextMonday(){const t=todayISO();let n=(1-dow(t)+7)%7;if(n===0)n=7;return addDays(t,n)}
 function fmtWhen(q){if(!q)return'';const [d,t]=q.split('T');const [y,m,dd]=d.split('-');const td=todayISO();let s;
   if(d===td)s='hoje';else if(d===addDays(td,1))s='amanhã';else if(d===addDays(td,-1))s='ontem';else{s=DOW[dow(d)].slice(0,3)+' '+dd+'/'+m;if(y!==td.slice(0,4))s+='/'+y}
@@ -633,10 +645,12 @@ function itemLI(i,mode){
   ck.addEventListener('click',()=>save(i.id,i.status==='feita'?{status:'aberta',feito_em:null}:{status:'feita',feito_em:nowLocal()}));
   const tt=el('button','title',linkify(esc(i.titulo)));tt.type='button';tt.setAttribute('aria-expanded',String(expanded===i.id));
   tt.addEventListener('click',()=>{expanded=expanded===i.id?null:i.id;renderAll()});
-  const meta=el('span','rmeta');
-  if(i.quando&&mode!=='hist')meta.append(el('span','when '+(b==='late'?'late':b==='today'?'today':''),esc(fmtWhen(i.quando))));
+  const meta=el('span','rmeta');const rk=mode==='hoje'&&b==='next'?risco(i):null;
+  if(i.quando&&mode!=='hist')meta.append(el('span','when '+(b==='late'?'late':b==='today'?'today':rk?'risk'+(rk.urg?' urg':''):''),esc(rk?fmtWhen(i.quando)+' · '+(rk.urg?'faça hoje':rk.txt.split(' · ')[1]):fmtWhen(i.quando))));
   if(mode==='hist'){const dt=(i.status==='feita'?i.feito_em:null)||i.criado||'';meta.append(el('span','',esc(fmtWhen(dt.slice(0,10)))))}
   meta.append(el('span','dot'));
+  li.dataset.id=i.id;
+  if(mode==='hoje'&&i.status==='aberta'){const g=el('button','grip','⋮⋮');g.type='button';g.setAttribute('aria-label','Arrastar para mudar a prioridade: '+i.titulo);g.addEventListener('pointerdown',e=>dragStart(e,li));r.classList.add('g');r.append(g)}
   r.append(ck,tt,meta);li.append(r);
   if(expanded===i.id){const m=el('div','more');
     if(i.detalhe)m.append(el('div','det',linkify(esc(i.detalhe))));
@@ -646,7 +660,7 @@ function itemLI(i,mode){
       const a=el('div','btnrow');a.append(el('span','lbl','Quando'));
       const td=todayISO();
       if(!i.quando||i.quando.slice(0,10)!==td)a.append(pill('Hoje',()=>setDate(i,td)));
-      a.append(pill('Amanhã',()=>setDate(i,addDays(td,1))),pill('Segunda',()=>setDate(i,nextMonday())),datePill(i));
+      a.append(pill('Amanhã',()=>setDate(i,addDays(td,1))));if(sextaAlvo()!==td&&sextaAlvo()!==addDays(td,1))a.append(pill('Até sexta',()=>setDate(i,sextaAlvo())));a.append(pill('Segunda',()=>setDate(i,nextMonday())),datePill(i));
       if(i.quando)a.append(pill('Sem data',()=>save(i.id,{quando:null})));
       m.append(a,ctxPills(i));
       const z=el('div','btnrow');z.append(el('span','lbl','Ação'));
@@ -657,15 +671,53 @@ function itemLI(i,mode){
     li.append(m)}
   return li}
 function block(key,title,cls,list,mode,collapsedDefault){
-  const s=el('section');const h=el('div','block-head');const open=key in openBlocks?openBlocks[key]:!collapsedDefault;
+  const s=el('section');s.dataset.block=key;const h=el('div','block-head');const open=key in openBlocks?openBlocks[key]:!collapsedDefault;
   const tg=el('button','toggle',`<h2><span class="${cls||''}">${open?'▾':'▸'} ${title}</span><span class="n">${list.length}</span></h2>`);tg.type='button';tg.setAttribute('aria-expanded',String(open));
   tg.addEventListener('click',()=>{openBlocks[key]=!open;store.set('open',JSON.stringify(openBlocks));renderHoje()});h.append(tg);s.append(h);
-  if(open){if(list.length){const ul=el('ul','items');list.forEach(i=>ul.append(itemLI(i,mode)));s.append(ul)}else s.append(el('p','empty','Nada aqui.'))}
+  if(key==='next'){const nr=list.filter(i=>risco(i)).length;if(nr){const sx=sextaSemana();s.append(el('p','riskline',`⚠ ${nr} vence${nr>1?'m':''} ${sx?'até sexta':'em breve'}. Se não fizer, entra${nr>1?'m':''} em atraso.`))}}
+  if(open){if(list.length){const ul=el('ul','items');ul.dataset.block=key;list.forEach(i=>ul.append(itemLI(i,mode)));s.append(ul)}else s.append(el('p','empty','Nada aqui.'))}
   return s}
+// ---------- arrastar para priorizar / mudar de bloco
+let drag=null,renderDepois=false;const DRAG_BLOCKS=['foco','next','sem'];
+function dragStart(e,li){if(e.button>0)return;e.preventDefault();
+  drag={li,id:li.dataset.id,from:li.parentNode.dataset.block,y0:e.clientY,moved:false,head:null,pid:e.pointerId};
+  const mv=ev=>{if(ev.pointerId===drag?.pid){ev.preventDefault();dragMove(ev)}},up=ev=>{if(drag&&ev.pointerId!==drag.pid)return;window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);window.removeEventListener('touchmove',tm);dragEnd(ev.type==='pointercancel')},tm=ev=>{if(drag&&drag.moved)ev.preventDefault()};
+  window.addEventListener('pointermove',mv,{passive:false});window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);window.addEventListener('touchmove',tm,{passive:false})}
+function dragMove(e){if(!drag)return;const y=e.clientY;
+  if(!drag.moved){if(Math.abs(y-drag.y0)<6)return;drag.moved=true;drag.li.classList.add('dragging');document.body.classList.add('arrastando');expanded=null}
+  if(y<70)window.scrollBy(0,-12);else if(y>innerHeight-110)window.scrollBy(0,12);
+  document.querySelectorAll('#hoje-blocks .block-head.drop').forEach(h=>h.classList.remove('drop'));drag.head=null;
+  for(const sec of document.querySelectorAll('#hoje-blocks section[data-block]')){const k=sec.dataset.block;if(!DRAG_BLOCKS.includes(k))continue;
+    const hd=sec.querySelector('.block-head').getBoundingClientRect();const ul=sec.querySelector('ul.items');
+    if(y>=hd.top&&y<=hd.bottom){if(!ul||k!==drag.li.parentNode.dataset.block){sec.querySelector('.block-head').classList.add('drop');drag.head=k;return}}
+    if(ul){const r=ul.getBoundingClientRect();if(y>=r.top-8&&y<=r.bottom+8){const sibs=[...ul.children].filter(x=>x!==drag.li);
+      const before=sibs.find(x=>{const b=x.getBoundingClientRect();return y<b.top+b.height/2});
+      if(before){if(before.previousSibling!==drag.li)ul.insertBefore(drag.li,before)}else if(ul.lastChild!==drag.li)ul.append(drag.li);return}}}}
+async function dragEnd(cancel){const d=drag;drag=null;document.body.classList.remove('arrastando');
+  document.querySelectorAll('#hoje-blocks .block-head.drop').forEach(h=>h.classList.remove('drop'));
+  if(!d)return;d.li.classList.remove('dragging');
+  if(cancel||!d.moved){if(renderDepois){renderDepois=false;renderAll()}else if(cancel)renderHoje();return}
+  const it=items.find(x=>x.id===d.id);if(!it){renderAll();return}
+  const to=d.head||d.li.parentNode.dataset.block;let ids;
+  if(d.head){const ul=document.querySelector(`#hoje-blocks ul.items[data-block="${to}"]`);ids=ul?[...ul.children].map(x=>x.dataset.id).filter(x=>x!==d.id):[];ids.push(d.id)}
+  else ids=[...d.li.parentNode.children].map(x=>x.dataset.id);
+  const td=todayISO();const patch={};
+  if(to!==d.from){
+    if(to==='sem')patch.quando=null;
+    else if(to==='foco'){const b=bucket(it);if(b!=='late'&&b!=='today')patch.quando=td+(it.quando&&it.quando.length>10?it.quando.slice(10):'')}
+    else if(to==='next'){const k=ids.indexOf(d.id);const viz=[ids[k-1],ids[k+1]].map(x=>items.find(y=>y.id===x)).find(y=>y&&y.quando);
+      const dia=viz?viz.quando.slice(0,10):(sextaAlvo()>addDays(td,1)?sextaAlvo():addDays(td,2));patch.quando=dia+(it.quando&&it.quando.length>10?it.quando.slice(10):'')}}
+  const muda=[];ids.forEach((id,n)=>{const x=items.find(y=>y.id===id);if(!x)return;const o=(n+1)*10;const p=id===d.id?Object.assign({},patch,{ordem:o}):(x.ordem!==o?{ordem:o}:null);if(p&&Object.keys(p).length)muda.push([x,p])});
+  for(const [x,p] of muda){applyLocal({k:'update',c:'itens',id:x.id,data:p})}
+  renderAll();
+  for(const [x,p] of muda){await save(x.id,p);if(p.quando)toCalendar(x.id,Object.assign({},x,p))}
+  if(to!==d.from)toast(to==='sem'?'Ficou sem data':to==='foco'?'Foi para hoje':'Agendado para '+fmtWhen(patch.quando||''))}
 const sortQ=(a,b)=>(a.quando||'9999').localeCompare(b.quando||'9999')||(b.criado||'').localeCompare(a.criado||'');
+const sortP=(a,b)=>((a.ordem??1e9)-(b.ordem??1e9))||sortQ(a,b);
 
 // ---------- Hoje
 function renderHoje(){
+  if(drag){renderDepois=true;return}
   const y=window.scrollY;renderAgenda();renderFin();ctxBar($('#ctxbar-hoje'),()=>{renderHoje();renderHist()});
   const tasks=items.filter(i=>i.tipo==='tarefa'||i.tipo==='lembrete');
   const open=tasks.filter(i=>i.status==='aberta'||i.status==='triagem');
@@ -676,9 +728,9 @@ function renderHoje(){
   $('#summary').innerHTML=`<table><thead><tr><th>Frente</th><th>Atrasadas</th><th>Hoje</th><th>Abertas</th></tr></thead><tbody>${rows.map(r=>`<tr class="row c-${r.c.id}" data-c="${r.c.id}" tabindex="0"><td><span class="ctxname"><span class="dot"></span>${esc(r.c.label)}</span></td>${n(r.late,'late')}${n(r.today)}${n(r.all)}</tr>`).join('')}<tr><td>Total</td>${n(tot.late,'late')}${n(tot.today)}${n(tot.all)}</tr></tbody></table>`;
   $('#summary').querySelectorAll('tr.row').forEach(tr=>{const go=()=>{ctxFilter=ctxFilter===tr.dataset.c?'':tr.dataset.c;store.set('ctx',ctxFilter);renderHoje();renderHist()};tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter')go()})});
   const f=open.filter(inCtx);
-  const foco=f.filter(i=>i.status==='aberta'&&(bucket(i)==='late'||bucket(i)==='today')).sort(sortQ);
-  const next=f.filter(i=>i.status==='aberta'&&bucket(i)==='next').sort(sortQ);
-  const sem=f.filter(i=>i.status==='aberta'&&bucket(i)==='sem').sort(sortQ);
+  const foco=f.filter(i=>i.status==='aberta'&&(bucket(i)==='late'||bucket(i)==='today')).sort(sortP);
+  const next=f.filter(i=>i.status==='aberta'&&bucket(i)==='next').sort(sortP);
+  const sem=f.filter(i=>i.status==='aberta'&&bucket(i)==='sem').sort(sortP);
   const tri=f.filter(i=>i.status==='triagem');
   const doneToday=tasks.filter(inCtx).filter(i=>i.status==='feita'&&(i.feito_em||'').slice(0,10)===todayISO());
   const box=$('#hoje-blocks');box.innerHTML='';
