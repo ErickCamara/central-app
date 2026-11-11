@@ -432,9 +432,10 @@ Frentes da vida dele (campo "contexto"):
 Listas que já existem: ${listNames().join(', ')}.
 
 Responda SÓ um objeto JSON:
-{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null}
+{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null,"parcelas":número|null,"valor_parcela":número|null}
 Regras:
 - gasto: ele conta um dinheiro que JÁ gastou ("gastei 80 no mercado", "paguei 45 de uber no pix", "almoço 32", "59,99 no itaú de itens na kalunga" — começar com um valor quase sempre é gasto). valor = número em reais; titulo = do que foi o gasto (curto, sem o valor); forma "pix" se falar pix/débito/dinheiro/transferência, senão "cartao"; cartao = qual cartão se ele disser (C6, Nubank/Nu, Inter, Itaú, Porto), senão null.
+- gasto parcelado ("3x de 99", "em 5 vezes", "parcelado em 10x"): parcelas = número de parcelas; valor_parcela = valor de cada parcela (se ele só disser o total, divida); valor = valor_parcela; forma "cartao"; o titulo não leva nada sobre valor nem parcelamento.
 - cartao: ele informa o valor atual da fatura/parcial de um ou mais cartões ("C6 3.900", "3753,45 - C6 / 3745,62 - Itaú", ou uma lista com título "Atualização dos cartões" e uma linha por cartão). cartoes = objeto com cada cartão citado e seu valor total atual. titulo "Atualização dos cartões".
 - Para gasto/cartao use contexto "pessoal", a não ser que fale da Nefex, Faça e Encante ou Mesa Viva.
 - tarefa: algo a fazer. lembrete: algo a lembrar num momento (ligar, cobrar, pagar numa data). compra: algo a comprar (lista "Compras"). lista: item para lista temática (filme, série, livro, lugar, presente, ideia…), use uma lista existente se servir, senão um nome curto. nota: informação para guardar e consultar depois.
@@ -452,7 +453,8 @@ Anotação:
     if(CTX.some(c=>c.id===r.contexto))o.contexto=r.contexto;
     o.quando=(typeof r.quando==='string'&&/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(r.quando))?r.quando:null;
     o.lista=(typeof r.lista==='string'&&r.lista.trim()&&(o.tipo==='lista'||o.tipo==='compra'))?r.lista.trim().slice(0,60):(o.tipo==='compra'?'Compras':null);
-    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null}
+    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null;
+      const np=Math.round(Number(r.parcelas));if(np>=2&&np<=48){const vp=Number(r.valor_parcela)>0?Number(r.valor_parcela):o.valor;o.parcelas=np;o.valor=Math.round(vp*100)/100;o.total=Math.round(vp*np*100)/100;o.forma='cartao'}}
     if(o.tipo==='cartao'){const cs={};for(const k in (r.cartoes||{})){const nm=FIN_CARTOES.find(c=>c.toLowerCase()===String(k).toLowerCase());const v=Number(r.cartoes[k]);if(nm&&v>=0)cs[nm]=Math.round(v*100)/100}if(!Object.keys(cs).length)return null;o.cartoes=cs;o.quando=null;o.lista=null}
     return o}
   catch(e){if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code))sample=null;return null}}
@@ -476,20 +478,30 @@ const brl2=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFrac
 function parseBRL(x){if(typeof x==='number')return x;if(x==null||x==='')return 0;const neg=/-/.test(String(x));const n=parseFloat(String(x).replace(/[^\d,]/g,'').replace(',','.'))||0;return neg?-n:n}
 function parseValor(t){const m=String(t).replace(/\bc6\b/ig,' ').match(/(?<![\w])(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)(?![\w\/])/);return m?parseBRL(m[1].includes(',')||/\.\d{3}/.test(m[1])?m[1]:m[1].replace('.',',')):null}
 function cartaoDe(t){const l=t.toLowerCase();if(/\bc6\b/.test(l))return'C6';if(/\bnu(bank)?\b/.test(l))return'Nubank';if(/\binter\b/.test(l))return'Inter';if(/\bita[uú](?![a-z])/.test(l))return'Itaú';if(/\bporto\b/.test(l))return'Porto';return null}
+function parcelasDe(t){const l=t.toLowerCase();
+  const m=l.match(/(\d{1,2})\s*(?:x|vezes|parcelas)\b(?:\s*(?:de|no valor de)\s*(?:r\$\s*)?(\d[\d.]*(?:,\d{1,2})?))?/);
+  if(!m||+m[1]<2||+m[1]>48)return null;if(!/parcel|\d\s*x\b|vezes|parcelas/.test(l))return null;
+  const n=+m[1];const p=m[2]?parseBRL(m[2].includes(',')||/\.\d{3}/.test(m[2])?m[2]:m[2].replace('.',',')):null;
+  const sem=l.replace(m[0],' ');const tot=parseValor(sem);
+  const parcela=p||(tot?Math.round(tot/n*100)/100:null);if(!parcela)return null;
+  return{n,parcela,total:Math.round(parcela*n*100)/100}}
+function limpaParcela(d){return d.replace(/[,;.]?\s*(mas\s+)?(foi\s+)?(parcelad[oa]\s+)?(em\s+)?\d{1,2}\s*(x|vezes|parcelas)\b(\s*(de|no valor de)\s*(r\$\s*)?\d[\d.,]*(\s*reais)?)?/ig,'').replace(/\b(deu|deu um total de|total de|no total)\s*(r\$\s*)?(\d[\d.,]*)?\s*(reais)?/ig,'').replace(/\b(mas|e)\s*$/i,'').replace(/\s{2,}/g,' ').trim()}
 function finGuess(text){const t=text.trim(),l=t.toLowerCase();
   const linhas=t.split(/\n|;|\s\/\s/).map(x=>x.trim()).filter(Boolean).filter(ln=>!(parseValor(ln)==null&&/cart|fatura|atualiza|parcia/i.test(ln)));
   const cs={};const soCartao=linhas.length>0&&linhas.every(ln=>{const c=cartaoDe(ln),v=parseValor(ln);if(!c||v==null)return false;
     const resto=ln.toLowerCase().replace(/\bc6\b|\bnu(bank)?\b|\binter\b|\bita[uú](?![a-z])|\bporto( seguro)?\b/,'').replace(/r?\$?\s*\d[\d.,]*/,'').replace(/fatura|parcial|cart[aã]o|cr[eé]dito|atualiza\w*|est[aá]|t[aá]|em|no|do|da|de|[-–:=]|\s/g,'');
     if(resto)return false;cs[c]=v;return true});
   if(soCartao)return{tipo:'cartao',titulo:'Atualização dos cartões',detalhe:'',contexto:'pessoal',quando:null,lista:null,cartoes:cs};
-  const gasto=(resto)=>{const v=parseValor(t);if(!v)return null;
-    let desc=resto.replace(/^(no|na|pelo|pela|com o|com)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|pix|d[ée]bito|dinheiro)(?![a-z])\s*/i,'').replace(/\b(no|na|de|com|em|pelo)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/^(de|em|no|na|com)\s+/i,'').trim()||'Gasto';
-    return{tipo:'gasto',titulo:desc.charAt(0).toUpperCase()+desc.slice(1),detalhe:'',contexto:'pessoal',quando:null,lista:null,valor:v,forma:/\b(pix|d[ée]bito|dinheiro|transfer)/.test(l)?'pix':'cartao',cartao:cartaoDe(t)}};
-  if(/^(gastei|paguei|comprei|gasto)\b/.test(l))return gasto(t.replace(/^(gastei|paguei|comprei|gasto)\s*/i,'').replace(/r?\$?\s*\d[\d.,]*\s*(reais)?/i,'').trim());
+  const gasto=(resto)=>{const pc=parcelasDe(t);const v=pc?pc.parcela:parseValor(t);if(!v)return null;if(pc)resto=limpaParcela(resto);
+    let desc=resto.replace(/^(no|na|pelo|pela|com o|com)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|pix|d[ée]bito|dinheiro)(?![a-z])\s*/i,'').replace(/\b(no|na|de|com|em|pelo)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/\s+(no|na|pelo|pela)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)(?![a-z])/ig,'').replace(/^(de|em|no|na|com)\s+/i,'').trim()||'Gasto';
+    const o={tipo:'gasto',titulo:desc.charAt(0).toUpperCase()+desc.slice(1),detalhe:'',contexto:'pessoal',quando:null,lista:null,valor:v,forma:/\b(pix|d[ée]bito|dinheiro|transfer)/.test(l)?'pix':'cartao',cartao:cartaoDe(t)};
+    if(pc){o.parcelas=pc.n;o.total=pc.total;o.forma='cartao'}return o};
+  if(/^(gastei|paguei|comprei|gasto)\b/.test(l)){let r=t.replace(/^(gastei|paguei|comprei|gasto)\s*/i,'');if(parcelasDe(t))r=limpaParcela(r);return gasto(r.replace(/r?\$?\s*\d[\d.,]*\s*(reais)?/i,'').trim())}
   const ehData=/^\s*\d{1,2}\s*(\/|h\b|:|\s+(de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)|\s+(horas?|min))/i.test(t);
   const pareceValor=/^\s*r\$|^\s*\d[\d.]*,\d{2}\b|^\s*\d[\d.,]*\s*reais/i.test(t)||(parseValor(t)||0)>=10;
   if(!ehData&&pareceValor&&/^\s*(r\$\s*)?\d[\d.,]*\s*(reais)?\s+\S/i.test(t))return gasto(t.replace(/^\s*(r\$\s*)?\d[\d.,]*\s*(reais)?\s*/i,''));
   return null}
+function mesMais(m,k){let [y,mm]=m.split('-').map(Number);mm+=k;while(mm>12){mm-=12;y++}return y+'-'+String(mm).padStart(2,'0')}
 async function sheet(tool,args){const r=await mcp.callTool('Google Sheets',tool,Object.assign({spreadsheetId:FIN_SHEET},args));return r&&r.payload}
 const finEst=()=>items.find(i=>i.id==='_financas');
 function dias(a,b){return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/864e5)}
@@ -510,11 +522,13 @@ async function finProcess(id,doc){
   if(todayISO()>FIN_MES.fim){toast('A tabela de '+FIN_MES.nome+' fechou. Me peça no chat para preparar o próximo mês');return}
   try{
     if(doc.tipo==='gasto'){const d=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
-      await sheet('append_values',{range:"'Lançamentos'!A1",values:[[d,doc.titulo,doc.valor,doc.forma==='pix'?'Pix/débito':'Cartão',doc.cartao||'',doc.forma==='pix'?'pix':'pendente',FIN_MES.id,id]]})}
+      const n=doc.parcelas>1?doc.parcelas:1;const rows=[];
+      for(let k=1;k<=n;k++)rows.push([d,doc.titulo+(n>1?` (${k}/${n})`:''),doc.valor,doc.forma==='pix'?'Pix/débito':'Cartão',doc.cartao||'',doc.forma==='pix'?'pix':'pendente',mesMais(FIN_MES.id,k-1),k===1?id:id+'-'+k]);
+      await sheet('append_values',{range:"'Lançamentos'!A1",values:rows})}
     else{for(const c in doc.cartoes)await sheet('update_values',{range:'Gastos!'+FIN_CEL[c],values:[[doc.cartoes[c]]]});
       const r=await sheet('get_values',{range:"'Lançamentos'!A2:H1000"});const rows=(r&&r.values)||[];
       const quando=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
-      const sit=rows.map(x=>{const st=x[5]||'';const card=x[4]||'';if(x[3]==='Cartão'&&st==='pendente'&&(!card||doc.cartoes[card]!=null))return['na fatura'];return[st]});
+      const sit=rows.map(x=>{const st=x[5]||'';const card=x[4]||'';if(x[3]==='Cartão'&&st==='pendente'&&(x[6]||FIN_MES.id)===FIN_MES.id&&(!card||doc.cartoes[card]!=null))return['na fatura'];return[st]});
       if(sit.length)await sheet('update_values',{range:"'Lançamentos'!F2:F"+(sit.length+1),values:sit});
     }
     await save(id,{fin:'na planilha'});await finRefresh(doc.tipo==='cartao'?{cartoes_em:nowLocal()}:null);
@@ -522,8 +536,8 @@ async function finProcess(id,doc){
   }catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null;toast('Não consegui atualizar a planilha agora. Tento de novo depois')}}
 async function finUndo(i){await save(i.id,{status:'arquivada'});
   if(!mcp||i.fin!=='na planilha'||i.tipo!=='gasto')return;
-  try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];const k=rows.findIndex(x=>x[0]===i.id);
-    if(k>=0){await sheet('update_values',{range:`'Lançamentos'!A${k+2}:H${k+2}`,values:[['','','','','','desfeito','','']]})}await finRefresh()}catch(e){}}
+  try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];for(let k=0;k<rows.length;k++){const v=rows[k][0]||'';if(v===i.id||v.startsWith(i.id+'-'))await sheet('update_values',{range:`'Lançamentos'!A${k+2}:H${k+2}`,values:[['','','','','','desfeito','','']]})}
+    await finRefresh()}catch(e){}}
 async function finSync(){if(finBusy)return;finBusy=true;try{for(const i of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada'&&!x.classificando))await finProcess(i.id,i);await finRefresh()}finally{finBusy=false}}
 function finAjuste(e){ // lançamentos ainda não confirmados na planilha já contam aqui, na hora
   let d=0,n=0;const novos=Object.assign({},e.cartoes);
@@ -542,12 +556,12 @@ function renderFin(){const box=$('#fin');const e0=finEst();if(!e0){box.hidden=tr
   <div class="fin-bar${resta<0?' over':''}"><i style="width:${pct}%"></i></div>
   ${finOpen?`<div class="fin-more">${FIN_CARTOES.map(c=>`<div class="row"><span>${c}</span><span>${brl2(e.cartoes[c]||0)}</span></div>`).join('')}
    <div class="row"><span>Cartões atualizados</span><span>${e.cartoes_em?esc(fmtWhen(e.cartoes_em.slice(0,10))):'—'}</span></div>
-   ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
+   ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':''}${g.parcelas>1?' · 1/'+g.parcelas:''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
    <div>Para lançar, escreva “gastei 80 no mercado”. Para atualizar o cartão, “C6 3.900”.</div></div>`:''}
   ${pend?`<p class="hint">Já conta ${pend} lançamento${pend>1?'s':''} que ainda vai${pend>1?'o':''} para a planilha.</p>`:''}`;
   box.querySelector('#fin-tg').onclick=()=>{finOpen=!finOpen;renderFin()}}
 function finChips(i,cl){
-  if(i.tipo==='gasto'){cl.append(el('span','',`${brl2(i.valor||0)} · ${i.forma==='pix'?'pix/débito':'cartão'+(i.cartao?' '+esc(i.cartao):'')}`))}
+  if(i.tipo==='gasto'){cl.append(el('span','',`${i.parcelas>1?i.parcelas+'x de ':''}${brl2(i.valor||0)}${i.parcelas>1?' (total '+brl2(i.total||i.valor*i.parcelas)+')':''} · ${i.forma==='pix'?'pix/débito':'cartão'+(i.cartao?' '+esc(i.cartao):'')}`))}
   else cl.append(el('span','',Object.entries(i.cartoes||{}).map(([c,v])=>c+' '+brl2(v)).join(' · ')));
   cl.append(el('span','',i.fin==='na planilha'?'na planilha ✓':'vai para a planilha'));
   if(i.tipo==='gasto')cl.append(pill('desfazer',()=>finUndo(i),'','Desfazer este gasto'))}
@@ -584,14 +598,14 @@ $('#composer').addEventListener('submit',async e=>{
   const g=guess(text);const online=navigator.onLine&&!!db&&!!sample;
   const doc={tipo:g.tipo,titulo:g.titulo,detalhe:g.detalhe,contexto:g.contexto,status:FIN_TIPOS.includes(g.tipo)?'registrado':g.tipo==='nota'?'guardada':'aberta',origem:'painel',bruto:text,criado:nowLocal(),classificando:online,classificar:!online&&!!(sample||!navigator.onLine)};
   if(g.quando)doc.quando=g.quando;if(g.lista)doc.lista=g.lista;
-  for(const k of ['valor','forma','cartao','cartoes'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
+  for(const k of ['valor','forma','cartao','cartoes','parcelas','total'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
   const id=newId();const r=await write({k:'add',c:'itens',id,data:doc});
   if(r==='fail'){ta.value=text;grow();return}
   if(curTab()!=='conversa')toast('Anotado ✓');
   if(looksSecret(text))toast('Parece uma senha. O melhor lugar para ela é um gerenciador de senhas');
   if(!online){if(FIN_TIPOS.includes(doc.tipo))finProcess(id,doc);return}
   const c=await classify(text);const patch={classificando:false};
-  if(c){Object.assign(patch,c);patch.status=FIN_TIPOS.includes(c.tipo)?'registrado':c.tipo==='nota'?'guardada':'aberta';patch.quando=c.quando||g.quando||null;if(FIN_TIPOS.includes(c.tipo))patch.fin='pendente'}
+  if(c){if(c.tipo==='gasto'&&g.parcelas&&!c.parcelas){c.parcelas=g.parcelas;c.valor=g.valor;c.total=g.total;c.forma='cartao'}Object.assign(patch,c);patch.status=FIN_TIPOS.includes(c.tipo)?'registrado':c.tipo==='nota'?'guardada':'aberta';patch.quando=c.quando||g.quando||null;if(FIN_TIPOS.includes(c.tipo))patch.fin='pendente'}
   await save(id,patch);const fim=Object.assign({},doc,patch);toCalendar(id,fim);if(FIN_TIPOS.includes(fim.tipo))finProcess(id,fim)});
 
 // ---------- funciona sem internet: cópia local + fila que sincroniza quando a conexão volta
