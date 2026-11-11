@@ -432,10 +432,10 @@ Frentes da vida dele (campo "contexto"):
 Listas que já existem: ${listNames().join(', ')}.
 
 Responda SÓ um objeto JSON:
-{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|null","cartoes":{"C6":número,…}|null}
+{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null}
 Regras:
-- gasto: ele conta um dinheiro que JÁ gastou ("gastei 80 no mercado", "paguei 45 de uber no pix", "almoço 32", "59,99 no itaú de itens na kalunga" — começar com um valor quase sempre é gasto). valor = número em reais; titulo = do que foi o gasto (curto, sem o valor); forma "pix" se falar pix/débito/dinheiro/transferência, senão "cartao"; cartao = qual cartão se ele disser (C6, Nubank/Nu, Inter, Itaú), senão null.
-- cartao: ele informa o valor atual da fatura/parcial de um ou mais cartões ("C6 3.900", "3753,45 - C6 / 3745,62 - Itaú"). cartoes = objeto com cada cartão citado e seu valor total atual. titulo "Atualização dos cartões".
+- gasto: ele conta um dinheiro que JÁ gastou ("gastei 80 no mercado", "paguei 45 de uber no pix", "almoço 32", "59,99 no itaú de itens na kalunga" — começar com um valor quase sempre é gasto). valor = número em reais; titulo = do que foi o gasto (curto, sem o valor); forma "pix" se falar pix/débito/dinheiro/transferência, senão "cartao"; cartao = qual cartão se ele disser (C6, Nubank/Nu, Inter, Itaú, Porto), senão null.
+- cartao: ele informa o valor atual da fatura/parcial de um ou mais cartões ("C6 3.900", "3753,45 - C6 / 3745,62 - Itaú", ou uma lista com título "Atualização dos cartões" e uma linha por cartão). cartoes = objeto com cada cartão citado e seu valor total atual. titulo "Atualização dos cartões".
 - Para gasto/cartao use contexto "pessoal", a não ser que fale da Nefex, Faça e Encante ou Mesa Viva.
 - tarefa: algo a fazer. lembrete: algo a lembrar num momento (ligar, cobrar, pagar numa data). compra: algo a comprar (lista "Compras"). lista: item para lista temática (filme, série, livro, lugar, presente, ideia…), use uma lista existente se servir, senão um nome curto. nota: informação para guardar e consultar depois.
 - titulo: curto; tarefa/lembrete começa com verbo; sem palavras de data/hora; mantenha nomes próprios.
@@ -446,7 +446,7 @@ Regras:
 Anotação:
 """${text.slice(0,4000)}"""`;
   try{const r=await sample.json(prompt,{modelTier:'quick'});if(!r||typeof r!=='object')return null;const o={};
-    if(TIPOS.includes(r.tipo))o.tipo=r.tipo;
+    if(TIPOS.includes(r.tipo)||FIN_TIPOS.includes(r.tipo))o.tipo=r.tipo;
     if(typeof r.titulo==='string'&&r.titulo.trim())o.titulo=r.titulo.trim().slice(0,300);
     if(typeof r.detalhe==='string')o.detalhe=r.detalhe.trim().slice(0,4000);
     if(CTX.some(c=>c.id===r.contexto))o.contexto=r.contexto;
@@ -469,17 +469,17 @@ async function toCalendar(id,doc){
 // ---------- Finanças: planilha do Google + resumo no Hoje
 const FIN_SHEET='1pyj6XEf5ppYOnkZbcG6gcNpaxq_VMdLGd1ysCK-440A';
 const FIN_MES={id:'2026-11',nome:'novembro',fim:'2026-11-30'}; // tabela do mês na aba Gastos (linhas 43–78)
-const FIN_CARTOES=['C6','Nubank','Inter','Itaú'];const FIN_CEL={C6:'G44',Nubank:'G45',Inter:'G46','Itaú':'G47'};
+const FIN_CARTOES=['C6','Nubank','Inter','Itaú','Porto'];const FIN_CEL={C6:'G44',Nubank:'G45',Inter:'G46','Itaú':'G47',Porto:'G48'};
 let finOpen=false,finBusy=false;
 const brl=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
 const brl2=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 function parseBRL(x){if(typeof x==='number')return x;if(x==null||x==='')return 0;const neg=/-/.test(String(x));const n=parseFloat(String(x).replace(/[^\d,]/g,'').replace(',','.'))||0;return neg?-n:n}
 function parseValor(t){const m=String(t).replace(/\bc6\b/ig,' ').match(/(?<![\w])(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)(?![\w\/])/);return m?parseBRL(m[1].includes(',')||/\.\d{3}/.test(m[1])?m[1]:m[1].replace('.',',')):null}
-function cartaoDe(t){const l=t.toLowerCase();if(/\bc6\b/.test(l))return'C6';if(/\bnu(bank)?\b/.test(l))return'Nubank';if(/\binter\b/.test(l))return'Inter';if(/\bita[uú](?![a-z])/.test(l))return'Itaú';return null}
+function cartaoDe(t){const l=t.toLowerCase();if(/\bc6\b/.test(l))return'C6';if(/\bnu(bank)?\b/.test(l))return'Nubank';if(/\binter\b/.test(l))return'Inter';if(/\bita[uú](?![a-z])/.test(l))return'Itaú';if(/\bporto\b/.test(l))return'Porto';return null}
 function finGuess(text){const t=text.trim(),l=t.toLowerCase();
-  const linhas=t.split(/\n|;|\s\/\s/).map(x=>x.trim()).filter(Boolean);
+  const linhas=t.split(/\n|;|\s\/\s/).map(x=>x.trim()).filter(Boolean).filter(ln=>!(parseValor(ln)==null&&/cart|fatura|atualiza|parcia/i.test(ln)));
   const cs={};const soCartao=linhas.length>0&&linhas.every(ln=>{const c=cartaoDe(ln),v=parseValor(ln);if(!c||v==null)return false;
-    const resto=ln.toLowerCase().replace(/\bc6\b|\bnu(bank)?\b|\binter\b|\bita[uú](?![a-z])/,'').replace(/r?\$?\s*\d[\d.,]*/,'').replace(/fatura|parcial|cart[aã]o|atualiza\w*|est[aá]|t[aá]|em|no|do|da|de|[-–:=]|\s/g,'');
+    const resto=ln.toLowerCase().replace(/\bc6\b|\bnu(bank)?\b|\binter\b|\bita[uú](?![a-z])|\bporto( seguro)?\b/,'').replace(/r?\$?\s*\d[\d.,]*/,'').replace(/fatura|parcial|cart[aã]o|cr[eé]dito|atualiza\w*|est[aá]|t[aá]|em|no|do|da|de|[-–:=]|\s/g,'');
     if(resto)return false;cs[c]=v;return true});
   if(soCartao)return{tipo:'cartao',titulo:'Atualização dos cartões',detalhe:'',contexto:'pessoal',quando:null,lista:null,cartoes:cs};
   const gasto=(resto)=>{const v=parseValor(t);if(!v)return null;
