@@ -432,9 +432,10 @@ Frentes da vida dele (campo "contexto"):
 Listas que já existem: ${listNames().join(', ')}.
 
 Responda SÓ um objeto JSON:
-{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null,"parcelas":número|null,"valor_parcela":número|null}
+{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null,"parcelas":número|null,"valor_parcela":número|null,"categoria":"Mercado|Lanche|Casa|Vestuário|Carro|Transporte|Farmácia|Pessoal|Animais|Lazer|Presentes|Assinaturas|Negócios|Outros|null"}
 Regras:
 - gasto: ele conta um dinheiro que JÁ gastou ("gastei 80 no mercado", "paguei 45 de uber no pix", "almoço 32", "59,99 no itaú de itens na kalunga" — começar com um valor quase sempre é gasto). valor = número em reais; titulo = do que foi o gasto (curto, sem o valor); forma "pix" se falar pix/débito/dinheiro/transferência, senão "cartao"; cartao = qual cartão se ele disser (C6, Nubank/Nu, Inter, Itaú, Porto), senão null.
+- categoria (só para gasto): Mercado (supermercado, feira, bebidas para casa), Lanche (restaurante, delivery, lanche, café na rua), Casa (itens e utensílios para casa, papelaria, decoração), Vestuário (roupa, calçado, acessório), Carro (gasolina, oficina, estacionamento, pedágio), Transporte (Uber, 99, ônibus), Farmácia, Pessoal (barbeiro, academia, pilates, cuidados), Animais (pet), Lazer (cinema, passeio, viagem, jogos), Presentes, Assinaturas (apps, streaming), Negócios (gasto da Nefex, Faça e Encante ou Mesa Viva, como anúncios), Outros.
 - gasto parcelado ("3x de 99", "em 5 vezes", "parcelado em 10x"): parcelas = número de parcelas; valor_parcela = valor de cada parcela (se ele só disser o total, divida); valor = valor_parcela; forma "cartao"; o titulo não leva nada sobre valor nem parcelamento.
 - cartao: ele informa o valor atual da fatura/parcial de um ou mais cartões ("C6 3.900", "3753,45 - C6 / 3745,62 - Itaú", ou uma lista com título "Atualização dos cartões" e uma linha por cartão). cartoes = objeto com cada cartão citado e seu valor total atual. titulo "Atualização dos cartões".
 - Para gasto/cartao use contexto "pessoal", a não ser que fale da Nefex, Faça e Encante ou Mesa Viva.
@@ -453,7 +454,7 @@ Anotação:
     if(CTX.some(c=>c.id===r.contexto))o.contexto=r.contexto;
     o.quando=(typeof r.quando==='string'&&/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(r.quando))?r.quando:null;
     o.lista=(typeof r.lista==='string'&&r.lista.trim()&&(o.tipo==='lista'||o.tipo==='compra'))?r.lista.trim().slice(0,60):(o.tipo==='compra'?'Compras':null);
-    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null;
+    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null;o.categoria=FIN_CATS.includes(r.categoria)?r.categoria:catDe(text);
       const np=Math.round(Number(r.parcelas));if(np>=2&&np<=48){const vp=Number(r.valor_parcela)>0?Number(r.valor_parcela):o.valor;o.parcelas=np;o.valor=Math.round(vp*100)/100;o.total=Math.round(vp*np*100)/100;o.forma='cartao'}}
     if(o.tipo==='cartao'){const cs={};for(const k in (r.cartoes||{})){const nm=FIN_CARTOES.find(c=>c.toLowerCase()===String(k).toLowerCase());const v=Number(r.cartoes[k]);if(nm&&v>=0)cs[nm]=Math.round(v*100)/100}if(!Object.keys(cs).length)return null;o.cartoes=cs;o.quando=null;o.lista=null}
     return o}
@@ -470,7 +471,11 @@ async function toCalendar(id,doc){
 
 // ---------- Finanças: planilha do Google + resumo no Hoje
 const FIN_SHEET='1pyj6XEf5ppYOnkZbcG6gcNpaxq_VMdLGd1ysCK-440A';
-const FIN_MES={id:'2026-11',nome:'novembro',fim:'2026-11-30'}; // tabela do mês na aba Gastos (linhas 43–78)
+const MESES_PT=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const FIN_MES=(()=>{const t=nowLocal().slice(0,10);const [y,m]=t.split('-').map(Number);const fim=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);return{id:t.slice(0,7),nome:MESES_PT[m-1],fim}})(); // mês corrente; a planilha calcula tudo nas abas Resumo/Meses
+const FIN_CATS=['Mercado','Lanche','Casa','Vestuário','Carro','Transporte','Farmácia','Pessoal','Animais','Lazer','Presentes','Assinaturas','Negócios','Outros'];
+function catDe(t){const l=t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const R=[['Negócios',/\bads\b|anuncio|trafego|mesa viva|faca e encante|nefex|meta ads/],['Presentes',/presente|lembrancinha/],['Vestuário',/roupa|camisa|calca|tenis|sapato|vestido|c&a|riachuelo|renner|zara|studio z|vestuario/],['Carro',/gasolina|combustivel|posto|oficina|estacionamento|pedagio|lava.?jato|\bcarro\b/],['Transporte',/\buber\b|\b99 ?(pop|taxi)\b|onibus|metro|taxi/],['Mercado',/mercado|supermercado|feira|atacad|hortifruti|frigo|acougue|padaria|conveniencia|bebida/],['Lanche',/lanche|almoco|jantar|restaurante|ifood|pizza|hamburguer|kebab|pastel|sorvete|cafe(?!.*capsula)|cafeteria|delivery/],['Farmácia',/farmacia|drogaria|remedio/],['Animais',/\bpet|racao|veterinari|petlove/],['Pessoal',/barbeiro|cabelo|pilates|academia|unha|manicure|estetica|massagem/],['Lazer',/cinema|show|ingresso|viagem|passeio|jogo|bar\b/],['Assinaturas',/spotify|netflix|assinatura|prime|youtube|icloud|chatgpt|claude/],['Casa',/casa|kalunga|camicado|tok ?stok|utensil|decoracao|shopee|amazon|natal/]];
+  for(const [c,re] of R)if(re.test(l))return c;return'Outros'}
 const FIN_CARTOES=['C6','Nubank','Inter','Itaú','Porto'];const FIN_CEL={C6:'G44',Nubank:'G45',Inter:'G46','Itaú':'G47',Porto:'G48'};
 let finOpen=false,finBusy=false;
 const brl=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
@@ -493,8 +498,9 @@ function finGuess(text){const t=text.trim(),l=t.toLowerCase();
     if(resto)return false;cs[c]=v;return true});
   if(soCartao)return{tipo:'cartao',titulo:'Atualização dos cartões',detalhe:'',contexto:'pessoal',quando:null,lista:null,cartoes:cs};
   const gasto=(resto)=>{const pc=parcelasDe(t);const v=pc?pc.parcela:parseValor(t);if(!v)return null;if(pc)resto=limpaParcela(resto);
-    let desc=resto.replace(/^(no|na|pelo|pela|com o|com)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|pix|d[ée]bito|dinheiro)(?![a-z])\s*/i,'').replace(/\b(no|na|de|com|em|pelo)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/\s+(no|na|pelo|pela)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)(?![a-z])/ig,'').replace(/^(de|em|no|na|com)\s+/i,'').trim()||'Gasto';
+    let desc=resto.replace(/^(no|na|pelo|pela|com o|com)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|pix|d[ée]bito|dinheiro)(?![a-z])\s*/i,'').replace(/\b(no|na|de|com|em|pelo)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/\s+(no|na|pelo|pela)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)(?![a-z])/ig,'').replace(/^[-–:]\s*/,'').replace(/\s*[-–]\s*(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)\s*$/i,'').replace(/^(de|em|no|na|com)\s+/i,'').trim()||'Gasto';
     const o={tipo:'gasto',titulo:desc.charAt(0).toUpperCase()+desc.slice(1),detalhe:'',contexto:'pessoal',quando:null,lista:null,valor:v,forma:/\b(pix|d[ée]bito|dinheiro|transfer)/.test(l)?'pix':'cartao',cartao:cartaoDe(t)};
+    o.categoria=catDe(t);if(/\bmesa viva|faca e encante|fa[çc]a e encante|nefex\b/i.test(t)){o.contexto=/mesa viva/i.test(t)?'mesa-viva':/nefex/i.test(t)?'nefex':'faca-e-encante'}
     if(pc){o.parcelas=pc.n;o.total=pc.total;o.forma='cartao'}return o};
   if(/^(gastei|paguei|comprei|gasto)\b/.test(l)){let r=t.replace(/^(gastei|paguei|comprei|gasto)\s*/i,'');if(parcelasDe(t))r=limpaParcela(r);return gasto(r.replace(/r?\$?\s*\d[\d.,]*\s*(reais)?/i,'').trim())}
   const ehData=/^\s*\d{1,2}\s*(\/|h\b|:|\s+(de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)|\s+(horas?|min))/i.test(t);
@@ -510,24 +516,24 @@ function finSemana(est,livre){const t=todayISO();const seg=addDays(t,-((dow(t)+6
   if(!s){const base=Math.max(0,livre);s={inicio:seg,livre_inicio:livre,teto:Math.round(base*(dias(t,fimSem)+1)/(dias(t,FIN_MES.fim)+1)*100)/100}}
   return s}
 async function finRefresh(extra){if(!mcp||!navigator.onLine)return;
-  try{const g=await sheet('get_values',{range:'Gastos!G44:G78'});const p=await sheet('get_values',{range:'Plano!B7'});
-    const v=(g&&g.values)||[];const cel=i=>parseBRL((v[i]||[])[0]);
-    const restante=cel(34),guardar=parseBRL(((p&&p.values)||[[0]])[0][0]);const livre=Math.round((restante-guardar)*100)/100;
-    const cartoes={};FIN_CARTOES.forEach((c,i)=>cartoes[c]=cel(i));
+  try{const g=await sheet('get_values',{range:'Resumo!A3:C22'});
+    const v=(g&&g.values)||[];const cel=r=>parseBRL((v[r-3]||[])[1]);
+    const restante=cel(9),guardar=cel(10),livre=Math.round(cel(11)*100)/100;
+    const caixa={paga:cel(14),saldo:cel(15)};
+    const cartoes={};for(let r=18;r<=22;r++){const nm=(v[r-3]||[])[0];if(FIN_CARTOES.includes(nm))cartoes[nm]=cel(r)}
     const est=finEst();const semana=finSemana(est,livre);
-    const doc=Object.assign({tipo:'sistema',status:'sistema',mes:FIN_MES.id,restante,guardar,livre,cartoes,semana,atualizado:nowLocal(),cartoes_em:(est&&est.cartoes_em)||null},extra||{});
+    const doc=Object.assign({tipo:'sistema',status:'sistema',mes:FIN_MES.id,restante,guardar,livre,cartoes,caixa,semana,atualizado:nowLocal(),cartoes_em:(est&&est.cartoes_em)||null},extra||{});
     await write({k:'add',c:'itens',id:'_financas',data:doc})}catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null}}
 async function finProcess(id,doc){
   if(!mcp||!navigator.onLine||doc.fin!=='pendente')return;
-  if(todayISO()>FIN_MES.fim){toast('A tabela de '+FIN_MES.nome+' fechou. Me peça no chat para preparar o próximo mês');return}
   try{
     if(doc.tipo==='gasto'){const d=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
       const n=doc.parcelas>1?doc.parcelas:1;const rows=[];
-      for(let k=1;k<=n;k++)rows.push([d,doc.titulo+(n>1?` (${k}/${n})`:''),doc.valor,doc.forma==='pix'?'Pix/débito':'Cartão',doc.cartao||'',doc.forma==='pix'?'pix':'pendente',mesMais(FIN_MES.id,k-1),k===1?id:id+'-'+k]);
+      for(let k=1;k<=n;k++)rows.push([d,doc.titulo+(n>1?` (${k}/${n})`:''),doc.valor,doc.forma==='pix'?'Pix/débito':'Cartão',doc.cartao||'',doc.forma==='pix'?'pix':'pendente',mesMais(FIN_MES.id,k-1),k===1?id:id+'-'+k,doc.categoria||'Outros',normCtx(doc.contexto),(doc.criado||nowLocal()).slice(11,16)]);
       await sheet('append_values',{range:"'Lançamentos'!A1",values:rows})}
-    else{for(const c in doc.cartoes)await sheet('update_values',{range:'Gastos!'+FIN_CEL[c],values:[[doc.cartoes[c]]]});
+    else{const quando=(doc.criado||nowLocal());const dt=quando.slice(0,10).split('-').reverse().join('/')+' '+(quando.slice(11,16)||'00:00');
+      await sheet('append_values',{range:'Faturas!A1',values:Object.keys(doc.cartoes).map(c=>[dt,c,doc.cartoes[c],FIN_MES.id,'central'])});
       const r=await sheet('get_values',{range:"'Lançamentos'!A2:H1000"});const rows=(r&&r.values)||[];
-      const quando=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
       const sit=rows.map(x=>{const st=x[5]||'';const card=x[4]||'';if(x[3]==='Cartão'&&st==='pendente'&&(x[6]||FIN_MES.id)===FIN_MES.id&&(!card||doc.cartoes[card]!=null))return['na fatura'];return[st]});
       if(sit.length)await sheet('update_values',{range:"'Lançamentos'!F2:F"+(sit.length+1),values:sit});
     }
@@ -536,7 +542,7 @@ async function finProcess(id,doc){
   }catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null;toast('Não consegui atualizar a planilha agora. Tento de novo depois')}}
 async function finUndo(i){await save(i.id,{status:'arquivada'});
   if(!mcp||i.fin!=='na planilha'||i.tipo!=='gasto')return;
-  try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];for(let k=0;k<rows.length;k++){const v=rows[k][0]||'';if(v===i.id||v.startsWith(i.id+'-'))await sheet('update_values',{range:`'Lançamentos'!A${k+2}:H${k+2}`,values:[['','','','','','desfeito','','']]})}
+  try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];for(let k=0;k<rows.length;k++){const v=rows[k][0]||'';if(v===i.id||v.startsWith(i.id+'-'))await sheet('update_values',{range:`'Lançamentos'!A${k+2}:K${k+2}`,values:[['','','','','','desfeito','','','','','']]})}
     await finRefresh()}catch(e){}}
 async function finSync(){if(finBusy)return;finBusy=true;try{for(const i of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada'&&!x.classificando))await finProcess(i.id,i);await finRefresh()}finally{finBusy=false}}
 function finAjuste(e){ // lançamentos ainda não confirmados na planilha já contam aqui, na hora
@@ -547,14 +553,15 @@ function finAjuste(e){ // lançamentos ainda não confirmados na planilha já co
 function renderFin(){const box=$('#fin');const e0=finEst();if(!e0){box.hidden=true;return}box.hidden=false;
   const aj=finAjuste(e0);const e=Object.assign({},e0,{livre:e0.livre-aj.d,cartoes:aj.cartoes});
   const resta=Math.round((e.semana.teto-(e.semana.livre_inicio-e.livre))*100)/100;const pct=e.semana.teto>0?Math.max(0,Math.min(100,resta/e.semana.teto*100)):0;
-  const fimMes=todayISO()>FIN_MES.fim;const pend=items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada').length;
+  const pend=items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada').length;
   const ult=items.filter(x=>x.tipo==='gasto'&&x.status!=='arquivada').sort((a,b)=>(b.criado||'').localeCompare(a.criado||'')).slice(0,3);
   box.innerHTML=`<div class="fin-head"><b>Finanças · ${FIN_MES.nome}</b><button type="button" id="fin-tg" aria-expanded="${finOpen}">${finOpen?'menos':'detalhes'}</button></div>
-  ${fimMes?'<p class="hint">O mês da planilha fechou. Me peça no chat para preparar a tabela do próximo mês.</p>':''}
+  ${e.livre<0?'<p class="hint" style="color:var(--late)">Os gastos do mês já passam do salário menos o que você quer guardar. Detalhes na aba Resumo da planilha.</p>':''}
   <div class="fin-nums"><div class="fin-num${e.livre<0?' neg':''}"><small>Livre no mês</small><strong>${brl(e.livre)}</strong><span>já separando ${brl(e.guardar)} para guardar</span></div>
   <div class="fin-num${resta<0?' neg':''}"><small>Esta semana</small><strong>${brl(resta)}</strong><span>de ${brl(e.semana.teto)} até domingo</span></div></div>
   <div class="fin-bar${resta<0?' over':''}"><i style="width:${pct}%"></i></div>
   ${finOpen?`<div class="fin-more">${FIN_CARTOES.map(c=>`<div class="row"><span>${c}</span><span>${brl2(e.cartoes[c]||0)}</span></div>`).join('')}
+   ${e.caixa?`<div class="row" style="margin-top:4px"><span>Paga neste mês (faturas do mês anterior)</span><span>${brl2(e.caixa.paga||0)}</span></div><div class="row"><span><b>Caixa do mês</b> (salário − o que vence)</span><span${e.caixa.saldo<0?' style="color:var(--late)"':''}>${brl2(e.caixa.saldo||0)}</span></div>`:''}
    <div class="row"><span>Cartões atualizados</span><span>${e.cartoes_em?esc(fmtWhen(e.cartoes_em.slice(0,10))):'—'}</span></div>
    ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':''}${g.parcelas>1?' · 1/'+g.parcelas:''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
    <div>Para lançar, escreva “gastei 80 no mercado”. Para atualizar o cartão, “C6 3.900”.</div></div>`:''}
@@ -598,7 +605,7 @@ $('#composer').addEventListener('submit',async e=>{
   const g=guess(text);const online=navigator.onLine&&!!db&&!!sample;
   const doc={tipo:g.tipo,titulo:g.titulo,detalhe:g.detalhe,contexto:g.contexto,status:FIN_TIPOS.includes(g.tipo)?'registrado':g.tipo==='nota'?'guardada':'aberta',origem:'painel',bruto:text,criado:nowLocal(),classificando:online,classificar:!online&&!!(sample||!navigator.onLine)};
   if(g.quando)doc.quando=g.quando;if(g.lista)doc.lista=g.lista;
-  for(const k of ['valor','forma','cartao','cartoes','parcelas','total'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
+  for(const k of ['valor','forma','cartao','cartoes','parcelas','total','categoria'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
   const id=newId();const r=await write({k:'add',c:'itens',id,data:doc});
   if(r==='fail'){ta.value=text;grow();return}
   if(curTab()!=='conversa')toast('Anotado ✓');
