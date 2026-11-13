@@ -145,11 +145,14 @@ main h2{font-family:var(--f-display);font-weight:500;font-size:18px;margin:0;dis
 main h2 .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-weight:400}
 .tag-late{color:var(--late)} .tag-today{color:var(--today)}
 .group{display:flex;flex-direction:column;gap:18px}
+#view-hoje.group{gap:12px}
 /* frentes */
 .c-nefex{--c:var(--c-nefex)} .c-faca-e-encante{--c:var(--c-fe)} .c-mesa-viva{--c:var(--c-mv)} .c-pessoal{--c:var(--c-pessoal)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted));display:inline-block;flex:none}
 .ctxbar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .ctxbar button{display:flex;align-items:center;gap:6px;font:500 13px var(--f-body);padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.ctxbar .cnt{font:500 11px var(--f-mono);color:var(--muted)}
+.ctxbar .cnt.late{color:#fff;background:var(--late);border-radius:999px;padding:0 5px;margin-left:-2px}
 .ctxbar button[aria-pressed="true"]{border-color:var(--c,var(--ink));box-shadow:inset 0 0 0 1px var(--c,var(--ink))}
 /* resumo */
 .summary{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -248,6 +251,21 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .fin-bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
 .fin-bar i{display:block;height:100%;background:var(--send);border-radius:999px}
 .fin-bar.over i{background:var(--late)}
+.fin.mini{padding:0;gap:0}
+.fin-line{all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:baseline;gap:12px;padding:9px 12px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.fin-line .fl-t{font-weight:600;color:var(--ink)}
+.fin-line b{font:600 14.5px var(--f-body);color:var(--ink);font-variant-numeric:tabular-nums}
+.fin-line b.neg{color:var(--late)}
+.fin-line .fl-c{margin-left:auto}
+.fin-line:focus-visible{outline:2px solid var(--accent);border-radius:12px}
+.fin-acts{display:flex;gap:12px}
+.fin-head .fin-acts button{all:unset;cursor:pointer;font:12px var(--f-mono);color:var(--muted)}
+.fin-res{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.fin-res span{flex:1}
+.fin-res strong{font:600 15px var(--f-body);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.fin-res button{all:unset;cursor:pointer;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--muted)}
+.fin-res button:hover{background:var(--bg);color:var(--ink)}
+.fin-res button:focus-visible{outline:2px solid var(--accent)}
 .fin-more{font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .fin-more .row{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
 .agenda{display:flex;flex-direction:column;gap:6px}
@@ -260,6 +278,14 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .ev.passou{opacity:.45}
 .head-acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 #sync-now[disabled]{opacity:.6;cursor:default}
+.imp-sec{background:color-mix(in srgb,var(--late) 9%,var(--surface));border:1.5px solid var(--late);border-radius:12px;padding:10px 12px 4px}
+.imp-sec ul.items{border-top-color:color-mix(in srgb,var(--late) 30%,var(--line))}
+.imp-sec ul.items>li:last-child{border-bottom:0}
+li.imp .title{font-weight:600}
+.flag{font:600 10.5px var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--late);border-radius:999px;padding:1px 7px;white-space:nowrap}
+.imp-sec .flag{display:none}
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--late) 45%,transparent)}50%{box-shadow:0 0 0 6px transparent}}
+.imp-sec{animation:pulso 2.4s ease-in-out 2}
 .row1.g{grid-template-columns:auto auto 1fr auto}
 .grip{all:unset;cursor:grab;touch-action:none;color:var(--muted);font-size:15px;line-height:1;padding:6px 2px;letter-spacing:-2px;user-select:none;-webkit-user-select:none}
 li.dragging{background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.18);border-radius:8px;position:relative;z-index:6;opacity:.95}
@@ -371,7 +397,7 @@ const CTX=[{id:'nefex',label:'Nefex'},{id:'faca-e-encante',label:'Faça e Encant
 const ctxLabel=id=>(CTX.find(c=>c.id===id)||{label:id}).label;
 const normCtx=v=>v==='trabalho'?'nefex':CTX.some(c=>c.id===v)?v:'pessoal';
 const TIPOS=['tarefa','lembrete','compra','lista','nota'];
-const tipoLabel={tarefa:'tarefa',lembrete:'lembrete',compra:'compra',lista:'lista',nota:'guardado',gasto:'gasto',cartao:'cartões'};
+const tipoLabel={tarefa:'tarefa',lembrete:'lembrete',compra:'compra',lista:'lista',nota:'guardado',gasto:'gasto',cartao:'cartões',reserva:'reserva'};
 const FIN_TIPOS=['gasto','cartao'];
 
 let db=null,sample=null,mcp=null,items=[],pedidos=[];
@@ -388,12 +414,13 @@ const curTab=()=>{const b=document.querySelector('nav button[aria-selected="true
 let startTab='hoje';if(['#hoje','#listas','#memoria','#conversa','#historico'].includes(location.hash))startTab=location.hash.slice(1);
 
 // ---------- barra de frentes
-function ctxBar(box,onPick){box.innerHTML='';
-  [{id:'',label:'Todas'}].concat(CTX).forEach(c=>{const b=el('button',c.id?'c-'+c.id:'',(c.id?'<span class="dot"></span>':'')+esc(c.label));b.type='button';b.setAttribute('aria-pressed',String(ctxFilter===c.id));
+function ctxBar(box,onPick,cnt){box.innerHTML='';
+  [{id:'',label:'Todas'}].concat(CTX).forEach(c=>{const k=cnt&&cnt[c.id||'*'];const b=el('button',c.id?'c-'+c.id:'',(c.id?'<span class="dot"></span>':'')+esc(c.label)+(k?` <span class="cnt">${k.all}</span>${k.late?`<span class="cnt late" title="atrasadas">${k.late}</span>`:''}`:''));b.type='button';b.setAttribute('aria-pressed',String(ctxFilter===c.id));
     b.addEventListener('click',()=>{ctxFilter=c.id;store.set('ctx',c.id);onPick()});box.append(b)})}
 const inCtx=i=>!ctxFilter||normCtx(i.contexto)===ctxFilter;
 
 // ---------- entender a mensagem
+const IMP_RE=/\b(muito importante|important[ií]ssim[oa]|importante|urgente|urg[eê]ncia|prioridade|priorit[aá]ri[oa]|cr[ií]tic[oa]|sem falta|n[aã]o posso esquecer|n[aã]o pode passar|essencial)\b|!{2,}|#importante|#urgente/i;
 function guess(text){
   const fg=finGuess(text);if(fg)return fg;
   let t=text.trim(),low=t.toLowerCase();const out={tipo:'tarefa',titulo:t,detalhe:'',contexto:null,quando:null,lista:null};
@@ -413,6 +440,7 @@ function guess(text){
   const tm=low.match(/\b(?:[àa]s\s+)?(\d{1,2})(?::(\d{2})|h(\d{2})?)\b/);
   if(tm&&+tm[1]<24){time=String(tm[1]).padStart(2,'0')+':'+(tm[2]||tm[3]||'00');if(!date)date=td}
   if(date)out.quando=time?date+'T'+time:date;
+  if(IMP_RE.test(t)){out.importante=true;t=t.replace(/\s*#(importante|urgente)\b/ig,'').replace(/\s*!{2,}\s*/g,' ').trim();out.titulo=t}
   if(/^comprar\b/i.test(t)){out.tipo='compra';out.lista='Compras';out.contexto=out.contexto||'pessoal';out.titulo=t.replace(/^comprar\s+/i,'')}
   else if(/^(lembrar|me lembr|lembrete)/i.test(t))out.tipo='lembrete';
   else if(/^(https?:\/\/|wa\.me|www\.)/i.test(t)||/senha|login|endere[çc]o|cpf|cnpj|\bpix\b/i.test(low))out.tipo='nota';
@@ -432,9 +460,11 @@ Frentes da vida dele (campo "contexto"):
 Listas que já existem: ${listNames().join(', ')}.
 
 Responda SÓ um objeto JSON:
-{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null,"parcelas":número|null,"valor_parcela":número|null,"categoria":"Mercado|Lanche|Casa|Vestuário|Carro|Transporte|Farmácia|Pessoal|Animais|Lazer|Presentes|Assinaturas|Negócios|Outros|null"}
+{"tipo":"tarefa|lembrete|compra|lista|nota|gasto|cartao","titulo":"…","detalhe":"…","contexto":"nefex|faca-e-encante|mesa-viva|pessoal","quando":"AAAA-MM-DD | AAAA-MM-DDTHH:MM | null","lista":"nome | null","valor":número|null,"forma":"cartao|pix|reserva|null","cartao":"C6|Nubank|Inter|Itaú|Porto|null","cartoes":{"C6":número,…}|null,"parcelas":número|null,"valor_parcela":número|null,"importante":true|false,"categoria":"Mercado|Lanche|Casa|Vestuário|Carro|Transporte|Farmácia|Pessoal|Animais|Lazer|Presentes|Assinaturas|Negócios|Outros|null"}
 Regras:
 - gasto: ele conta um dinheiro que JÁ gastou ("gastei 80 no mercado", "paguei 45 de uber no pix", "almoço 32", "59,99 no itaú de itens na kalunga" — começar com um valor quase sempre é gasto). valor = número em reais; titulo = do que foi o gasto (curto, sem o valor); forma "pix" se falar pix/débito/dinheiro/transferência, senão "cartao"; cartao = qual cartão se ele disser (C6, Nubank/Nu, Inter, Itaú, Porto), senão null.
+- importante: true quando ele indicar que é muito importante, urgente, prioridade, crítico, "não posso esquecer", "sem falta", "!!" ou #importante; senão false. Essas palavras não entram no titulo.
+- forma "reserva": quando ele diz que pagou com/tirando da reserva (de emergência). Nesse caso cartao null.
 - categoria (só para gasto): Mercado (supermercado, feira, bebidas para casa), Lanche (restaurante, delivery, lanche, café na rua), Casa (itens e utensílios para casa, papelaria, decoração), Vestuário (roupa, calçado, acessório), Carro (gasolina, oficina, estacionamento, pedágio), Transporte (Uber, 99, ônibus), Farmácia, Pessoal (barbeiro, academia, pilates, cuidados), Animais (pet), Lazer (cinema, passeio, viagem, jogos), Presentes, Assinaturas (apps, streaming), Negócios (gasto da Nefex, Faça e Encante ou Mesa Viva, como anúncios), Outros.
 - gasto parcelado ("3x de 99", "em 5 vezes", "parcelado em 10x"): parcelas = número de parcelas; valor_parcela = valor de cada parcela (se ele só disser o total, divida); valor = valor_parcela; forma "cartao"; o titulo não leva nada sobre valor nem parcelamento.
 - cartao: ele informa o valor atual da fatura/parcial de um ou mais cartões ("C6 3.900", "3753,45 - C6 / 3745,62 - Itaú", ou uma lista com título "Atualização dos cartões" e uma linha por cartão). cartoes = objeto com cada cartão citado e seu valor total atual. titulo "Atualização dos cartões".
@@ -452,9 +482,10 @@ Anotação:
     if(typeof r.titulo==='string'&&r.titulo.trim())o.titulo=r.titulo.trim().slice(0,300);
     if(typeof r.detalhe==='string')o.detalhe=r.detalhe.trim().slice(0,4000);
     if(CTX.some(c=>c.id===r.contexto))o.contexto=r.contexto;
+    if(r.importante===true||IMP_RE.test(text))o.importante=true;
     o.quando=(typeof r.quando==='string'&&/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(r.quando))?r.quando:null;
     o.lista=(typeof r.lista==='string'&&r.lista.trim()&&(o.tipo==='lista'||o.tipo==='compra'))?r.lista.trim().slice(0,60):(o.tipo==='compra'?'Compras':null);
-    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null;o.categoria=FIN_CATS.includes(r.categoria)?r.categoria:catDe(text);
+    if(o.tipo==='gasto'){const v=Number(r.valor);if(!(v>0))return null;o.valor=Math.round(v*100)/100;o.forma=r.forma==='pix'?'pix':r.forma==='reserva'||RES_RE.test(text)?'reserva':'cartao';o.cartao=FIN_CARTOES.includes(r.cartao)?r.cartao:null;o.quando=null;o.lista=null;o.categoria=FIN_CATS.includes(r.categoria)?r.categoria:catDe(text);
       const np=Math.round(Number(r.parcelas));if(np>=2&&np<=48){const vp=Number(r.valor_parcela)>0?Number(r.valor_parcela):o.valor;o.parcelas=np;o.valor=Math.round(vp*100)/100;o.total=Math.round(vp*np*100)/100;o.forma='cartao'}}
     if(o.tipo==='cartao'){const cs={};for(const k in (r.cartoes||{})){const nm=FIN_CARTOES.find(c=>c.toLowerCase()===String(k).toLowerCase());const v=Number(r.cartoes[k]);if(nm&&v>=0)cs[nm]=Math.round(v*100)/100}if(!Object.keys(cs).length)return null;o.cartoes=cs;o.quando=null;o.lista=null}
     return o}
@@ -474,7 +505,7 @@ const FIN_SHEET='1pyj6XEf5ppYOnkZbcG6gcNpaxq_VMdLGd1ysCK-440A';
 const MESES_PT=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const FIN_MES=(()=>{const t=nowLocal().slice(0,10);const [y,m]=t.split('-').map(Number);const fim=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);return{id:t.slice(0,7),nome:MESES_PT[m-1],fim}})(); // mês corrente; a planilha calcula tudo nas abas Resumo/Meses
 const FIN_CATS=['Mercado','Lanche','Casa','Vestuário','Carro','Transporte','Farmácia','Pessoal','Animais','Lazer','Presentes','Assinaturas','Negócios','Outros'];
-function catDe(t){const l=t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const R=[['Negócios',/\bads\b|anuncio|trafego|mesa viva|faca e encante|nefex|meta ads/],['Presentes',/presente|lembrancinha/],['Vestuário',/roupa|camisa|calca|tenis|sapato|vestido|c&a|riachuelo|renner|zara|studio z|vestuario/],['Carro',/gasolina|combustivel|posto|oficina|estacionamento|pedagio|lava.?jato|\bcarro\b/],['Transporte',/\buber\b|\b99 ?(pop|taxi)\b|onibus|metro|taxi/],['Mercado',/mercado|supermercado|feira|atacad|hortifruti|frigo|acougue|padaria|conveniencia|bebida/],['Lanche',/lanche|almoco|jantar|restaurante|ifood|pizza|hamburguer|kebab|pastel|sorvete|cafe(?!.*capsula)|cafeteria|delivery/],['Farmácia',/farmacia|drogaria|remedio/],['Animais',/\bpet|racao|veterinari|petlove/],['Pessoal',/barbeiro|cabelo|pilates|academia|unha|manicure|estetica|massagem/],['Lazer',/cinema|show|ingresso|viagem|passeio|jogo|bar\b/],['Assinaturas',/spotify|netflix|assinatura|prime|youtube|icloud|chatgpt|claude/],['Casa',/casa|kalunga|camicado|tok ?stok|utensil|decoracao|shopee|amazon|natal/]];
+function catDe(t){const l=t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const R=[['Negócios',/\bads\b|anuncio|trafego|mesa viva|faca e encante|nefex|meta ads/],['Presentes',/presente|lembrancinha/],['Vestuário',/roupa|camisa|calca|tenis|sapato|vestido|c&a|riachuelo|renner|zara|studio z|vestuario/],['Carro',/ipva|licenciamento|detran|multa|gasolina|combustivel|posto|oficina|estacionamento|pedagio|lava.?jato|\bcarro\b/],['Transporte',/\buber\b|\b99 ?(pop|taxi)\b|onibus|metro|taxi/],['Mercado',/mercado|supermercado|feira|atacad|hortifruti|frigo|acougue|padaria|conveniencia|bebida/],['Lanche',/lanche|almoco|jantar|restaurante|ifood|pizza|hamburguer|kebab|pastel|sorvete|cafe(?!.*capsula)|cafeteria|delivery/],['Farmácia',/farmacia|drogaria|remedio/],['Animais',/\bpet|racao|veterinari|petlove/],['Pessoal',/barbeiro|cabelo|pilates|academia|unha|manicure|estetica|massagem/],['Lazer',/cinema|show|ingresso|viagem|passeio|jogo|bar\b/],['Assinaturas',/spotify|netflix|assinatura|prime|youtube|icloud|chatgpt|claude/],['Casa',/casa|kalunga|camicado|tok ?stok|utensil|decoracao|shopee|amazon|natal/]];
   for(const [c,re] of R)if(re.test(l))return c;return'Outros'}
 const FIN_CARTOES=['C6','Nubank','Inter','Itaú','Porto'];const FIN_CEL={C6:'G44',Nubank:'G45',Inter:'G46','Itaú':'G47',Porto:'G48'};
 let finOpen=false,finBusy=false;
@@ -483,26 +514,34 @@ const brl2=v=>(v<0?'-':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFrac
 function parseBRL(x){if(typeof x==='number')return x;if(x==null||x==='')return 0;const neg=/-/.test(String(x));const n=parseFloat(String(x).replace(/[^\d,]/g,'').replace(',','.'))||0;return neg?-n:n}
 function parseValor(t){const m=String(t).replace(/\bc6\b/ig,' ').match(/(?<![\w])(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)(?![\w\/])/);return m?parseBRL(m[1].includes(',')||/\.\d{3}/.test(m[1])?m[1]:m[1].replace('.',',')):null}
 function cartaoDe(t){const l=t.toLowerCase();if(/\bc6\b/.test(l))return'C6';if(/\bnu(bank)?\b/.test(l))return'Nubank';if(/\binter\b/.test(l))return'Inter';if(/\bita[uú](?![a-z])/.test(l))return'Itaú';if(/\bporto\b/.test(l))return'Porto';return null}
+const RES_RE=/reserva(\s+de\s+emerg[eê]ncia)?/i;
+function reservaGuess(t){const l=t.toLowerCase();if(!RES_RE.test(l))return null;const v=parseValor(t);if(v==null)return null;
+  if(/^(minha\s+)?reserva(\s+de\s+emerg[eê]ncia)?\s*(est[aá]|ficou|tem|agora|atual|=|:)?\s*(com|em)?\s*(r\$\s*)?\d/.test(l)||/(fiquei|ficou|fica|estou|est[aá])\s+com\s+(r\$\s*)?[\d.,]+\s*(reais\s*)?(na|de)\s+reserva/.test(l)&&!/^(gastei|paguei|comprei)/.test(l))
+    return{tipo:'reserva',titulo:'Saldo da reserva de emergência',detalhe:'',contexto:'pessoal',quando:null,lista:null,saldo:v};
+  if(/^(guardei|coloquei|depositei|aportei|transferi|juntei|botei)\b/.test(l))return{tipo:'reserva',titulo:'Guardei na reserva',detalhe:'',contexto:'pessoal',quando:null,lista:null,delta:v};
+  if(/^(tirei|saquei|retirei|usei)\b/.test(l)&&!/(paguei|gastei|comprei)/.test(l))return{tipo:'reserva',titulo:'Tirei da reserva',detalhe:'',contexto:'pessoal',quando:null,lista:null,delta:-v};
+  return null}
 function parcelasDe(t){const l=t.toLowerCase();
   const m=l.match(/(\d{1,2})\s*(?:x|vezes|parcelas)\b(?:\s*(?:de|no valor de)\s*(?:r\$\s*)?(\d[\d.]*(?:,\d{1,2})?))?/);
   if(!m||+m[1]<2||+m[1]>48)return null;if(!/parcel|\d\s*x\b|vezes|parcelas/.test(l))return null;
   const n=+m[1];const p=m[2]?parseBRL(m[2].includes(',')||/\.\d{3}/.test(m[2])?m[2]:m[2].replace('.',',')):null;
   const sem=l.replace(m[0],' ');const tot=parseValor(sem);
   const parcela=p||(tot?Math.round(tot/n*100)/100:null);if(!parcela)return null;
-  return{n,parcela,total:Math.round(parcela*n*100)/100}}
+  return{n,parcela,total:p?Math.round(p*n*100)/100:Math.round(tot*100)/100}}
 function limpaParcela(d){return d.replace(/[,;.]?\s*(mas\s+)?(foi\s+)?(parcelad[oa]\s+)?(em\s+)?\d{1,2}\s*(x|vezes|parcelas)\b(\s*(de|no valor de)\s*(r\$\s*)?\d[\d.,]*(\s*reais)?)?/ig,'').replace(/\b(deu|deu um total de|total de|no total)\s*(r\$\s*)?(\d[\d.,]*)?\s*(reais)?/ig,'').replace(/\b(mas|e)\s*$/i,'').replace(/\s{2,}/g,' ').trim()}
 function finGuess(text){const t=text.trim(),l=t.toLowerCase();
+  const rv=reservaGuess(t);if(rv)return rv;
   const linhas=t.split(/\n|;|\s\/\s/).map(x=>x.trim()).filter(Boolean).filter(ln=>!(parseValor(ln)==null&&/cart|fatura|atualiza|parcia/i.test(ln)));
   const cs={};const soCartao=linhas.length>0&&linhas.every(ln=>{const c=cartaoDe(ln),v=parseValor(ln);if(!c||v==null)return false;
     const resto=ln.toLowerCase().replace(/\bc6\b|\bnu(bank)?\b|\binter\b|\bita[uú](?![a-z])|\bporto( seguro)?\b/,'').replace(/r?\$?\s*\d[\d.,]*/,'').replace(/fatura|parcial|cart[aã]o|cr[eé]dito|atualiza\w*|est[aá]|t[aá]|em|no|do|da|de|[-–:=]|\s/g,'');
     if(resto)return false;cs[c]=v;return true});
   if(soCartao)return{tipo:'cartao',titulo:'Atualização dos cartões',detalhe:'',contexto:'pessoal',quando:null,lista:null,cartoes:cs};
   const gasto=(resto)=>{const pc=parcelasDe(t);const v=pc?pc.parcela:parseValor(t);if(!v)return null;if(pc)resto=limpaParcela(resto);
-    let desc=resto.replace(/^(no|na|pelo|pela|com o|com)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|pix|d[ée]bito|dinheiro)(?![a-z])\s*/i,'').replace(/\b(no|na|de|com|em|pelo)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/\s+(no|na|pelo|pela)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)(?![a-z])/ig,'').replace(/^[-–:]\s*/,'').replace(/\s*[-–]\s*(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)\s*$/i,'').replace(/^(de|em|no|na|com)\s+/i,'').trim()||'Gasto';
-    const o={tipo:'gasto',titulo:desc.charAt(0).toUpperCase()+desc.slice(1),detalhe:'',contexto:'pessoal',quando:null,lista:null,valor:v,forma:/\b(pix|d[ée]bito|dinheiro|transfer)/.test(l)?'pix':'cartao',cartao:cartaoDe(t)};
+    let desc=resto.replace(/^(no|na|pelo|pela|com o|com)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|pix|d[ée]bito|dinheiro)(?![a-z])\s*/i,'').replace(/\b(no|na|de|com|em|pelo)\s+(pix|d[ée]bito|dinheiro|cart[aã]o)\b/ig,'').replace(/\s+(no|na|pelo|pela)\s+(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)(?![a-z])/ig,'').replace(/[,;]?\s*(no pix\s*)?(tirando|tirei|usando|usei|pago|paguei|com)?\s*(d[ae]\s+)?(minha\s+)?reserva(\s+de\s+emerg[eê]ncia)?/ig,'').replace(/^[-–:]\s*/,'').replace(/\s*[-–]\s*(cart[aã]o\s+)?(c6|nubank|nu|inter|ita[uú]|porto)\s*$/i,'').replace(/^(de|em|no|na|com|o|a|os|as)\s+/i,'').trim()||'Gasto';
+    const o={tipo:'gasto',titulo:desc.charAt(0).toUpperCase()+desc.slice(1),detalhe:'',contexto:'pessoal',quando:null,lista:null,valor:v,forma:RES_RE.test(l)?'reserva':/\b(pix|d[ée]bito|dinheiro|transfer)/.test(l)?'pix':'cartao',cartao:RES_RE.test(l)?null:cartaoDe(t)};
     o.categoria=catDe(t);if(/\bmesa viva|faca e encante|fa[çc]a e encante|nefex\b/i.test(t)){o.contexto=/mesa viva/i.test(t)?'mesa-viva':/nefex/i.test(t)?'nefex':'faca-e-encante'}
     if(pc){o.parcelas=pc.n;o.total=pc.total;o.forma='cartao'}return o};
-  if(/^(gastei|paguei|comprei|gasto)\b/.test(l)){let r=t.replace(/^(gastei|paguei|comprei|gasto)\s*/i,'');if(parcelasDe(t))r=limpaParcela(r);return gasto(r.replace(/r?\$?\s*\d[\d.,]*\s*(reais)?/i,'').trim())}
+  if(/^(gastei|paguei|comprei|gasto)\b/.test(l)){let r=t.replace(/^(gastei|paguei|comprei|gasto)\s*/i,'');if(parcelasDe(t))r=limpaParcela(r);return gasto(r.replace(/r?\$?\s*\d[\d.,]*\s*(reais)?/i,' ').replace(/\s{2,}/g,' ').trim())}
   const ehData=/^\s*\d{1,2}\s*(\/|h\b|:|\s+(de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)|\s+(horas?|min))/i.test(t);
   const pareceValor=/^\s*r\$|^\s*\d[\d.]*,\d{2}\b|^\s*\d[\d.,]*\s*reais/i.test(t)||(parseValor(t)||0)>=10;
   if(!ehData&&pareceValor&&/^\s*(r\$\s*)?\d[\d.,]*\s*(reais)?\s+\S/i.test(t))return gasto(t.replace(/^\s*(r\$\s*)?\d[\d.,]*\s*(reais)?\s*/i,''));
@@ -529,7 +568,8 @@ async function finProcess(id,doc){
   try{
     if(doc.tipo==='gasto'){const d=(doc.criado||nowLocal()).slice(0,10).split('-').reverse().join('/');
       const n=doc.parcelas>1?doc.parcelas:1;const rows=[];
-      for(let k=1;k<=n;k++)rows.push([d,doc.titulo+(n>1?` (${k}/${n})`:''),doc.valor,doc.forma==='pix'?'Pix/débito':'Cartão',doc.cartao||'',doc.forma==='pix'?'pix':'pendente',mesMais(FIN_MES.id,k-1),k===1?id:id+'-'+k,doc.categoria||'Outros',normCtx(doc.contexto),(doc.criado||nowLocal()).slice(11,16)]);
+      const FM={pix:['Pix/débito','pix'],reserva:['Reserva','reserva']}[doc.forma]||['Cartão','pendente'];
+      for(let k=1;k<=n;k++)rows.push([d,doc.titulo+(n>1?` (${k}/${n})`:''),(n>1&&k===n&&doc.total)?Math.round((doc.total-doc.valor*(n-1))*100)/100:doc.valor,FM[0],doc.forma==='cartao'?(doc.cartao||''):'',FM[1],mesMais(FIN_MES.id,k-1),k===1?id:id+'-'+k,doc.categoria||'Outros',normCtx(doc.contexto),(doc.criado||nowLocal()).slice(11,16)]);
       await sheet('append_values',{range:"'Lançamentos'!A1",values:rows})}
     else{const quando=(doc.criado||nowLocal());const dt=quando.slice(0,10).split('-').reverse().join('/')+' '+(quando.slice(11,16)||'00:00');
       await sheet('append_values',{range:'Faturas!A1',values:Object.keys(doc.cartoes).map(c=>[dt,c,doc.cartoes[c],FIN_MES.id,'central'])});
@@ -540,35 +580,57 @@ async function finProcess(id,doc){
     await save(id,{fin:'na planilha'});await finRefresh(doc.tipo==='cartao'?{cartoes_em:nowLocal()}:null);
     if(doc.tipo==='gasto'){const e=finEst();if(e)toast(`Anotado. Sobram ${brl(e.semana.teto-(e.semana.livre_inicio-e.livre))} na semana`)}
   }catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null;toast('Não consegui atualizar a planilha agora. Tento de novo depois')}}
-async function finUndo(i){await save(i.id,{status:'arquivada'});
+async function finUndo(i){await save(i.id,{status:'arquivada'});if(i.forma==='reserva')await reservaDesfazer(i);
   if(!mcp||i.fin!=='na planilha'||i.tipo!=='gasto')return;
   try{const r=await sheet('get_values',{range:"'Lançamentos'!H2:H1000"});const rows=(r&&r.values)||[];for(let k=0;k<rows.length;k++){const v=rows[k][0]||'';if(v===i.id||v.startsWith(i.id+'-'))await sheet('update_values',{range:`'Lançamentos'!A${k+2}:K${k+2}`,values:[['','','','','','desfeito','','','','','']]})}
     await finRefresh()}catch(e){}}
 async function finSync(){if(finBusy)return;finBusy=true;try{for(const i of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada'&&!x.classificando))await finProcess(i.id,i);await finRefresh()}finally{finBusy=false}}
+// ---------- Reserva de emergência (fica só na Central; valor escondido até tocar no olho)
+const resEst=()=>items.find(i=>i.id==='_reserva');
+async function reservaAplicar(id,doc){const it=items.find(i=>i.id===id);if((it&&it.reserva_ok)||doc.reserva_ok)return;
+  const r=resEst();let saldo=r?Number(r.saldo)||0:0;let mov;
+  if(doc.tipo==='reserva'&&doc.saldo!=null){mov={data:nowLocal(),valor:Math.round((doc.saldo-saldo)*100)/100,desc:'saldo informado'};saldo=doc.saldo}
+  else if(doc.tipo==='reserva'){const v=Number(doc.delta)||0;saldo+=v;mov={data:nowLocal(),valor:v,desc:doc.titulo}}
+  else{const v=-(Number(doc.valor)||0)*(doc.parcelas>1?doc.parcelas:1);saldo+=v;mov={data:nowLocal(),valor:v,desc:doc.titulo}}
+  saldo=Math.round(saldo*100)/100;const movs=((r&&r.movs)||[]).concat([mov]).slice(-60);
+  await write({k:'add',c:'itens',id:'_reserva',data:{tipo:'sistema',status:'sistema',saldo,movs,atualizado:nowLocal()}});
+  await save(id,{reserva_ok:true});toast('Reserva de emergência atualizada')}
+async function reservaDesfazer(i){if(!i.reserva_ok)return;const r=resEst();if(!r)return;const v=(Number(i.valor)||0)*(i.parcelas>1?i.parcelas:1);
+  await write({k:'add',c:'itens',id:'_reserva',data:{tipo:'sistema',status:'sistema',saldo:Math.round(((Number(r.saldo)||0)+v)*100)/100,movs:(r.movs||[]).concat([{data:nowLocal(),valor:v,desc:'desfeito: '+i.titulo}]).slice(-60),atualizado:nowLocal()}});await save(i.id,{reserva_ok:false})}
+let verReserva=store.get('verReserva','0')==='1';
+const OLHO='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const OLHO_X='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17.9 17.9A10.8 10.8 0 0 1 12 19C5 19 1 12 1 12a19.7 19.7 0 0 1 5.1-5.9M9.9 5.2A10 10 0 0 1 12 5c7 0 11 7 11 7a19.6 19.6 0 0 1-2.2 3.2M1 1l22 22"/><path d="M14.1 14.1a3 3 0 1 1-4.2-4.2"/></svg>';
 function finAjuste(e){ // lançamentos ainda não confirmados na planilha já contam aqui, na hora
   let d=0,n=0;const novos=Object.assign({},e.cartoes);
   for(const x of items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada')){n++;
-    if(x.tipo==='gasto')d+=Number(x.valor)||0;else for(const c in (x.cartoes||{})){d+=(Number(x.cartoes[c])||0)-(Number(novos[c])||0);novos[c]=Number(x.cartoes[c])||0}}
+    if(x.tipo==='gasto'){if(x.forma!=='reserva')d+=Number(x.valor)||0}else for(const c in (x.cartoes||{})){d+=(Number(x.cartoes[c])||0)-(Number(novos[c])||0);novos[c]=Number(x.cartoes[c])||0}}
   return{d:Math.round(d*100)/100,n,cartoes:novos}}
+let finCompacto=store.get('finCompacto','1')==='1';
 function renderFin(){const box=$('#fin');const e0=finEst();if(!e0){box.hidden=true;return}box.hidden=false;
   const aj=finAjuste(e0);const e=Object.assign({},e0,{livre:e0.livre-aj.d,cartoes:aj.cartoes});
   const resta=Math.round((e.semana.teto-(e.semana.livre_inicio-e.livre))*100)/100;const pct=e.semana.teto>0?Math.max(0,Math.min(100,resta/e.semana.teto*100)):0;
+  box.classList.toggle('mini',finCompacto);
+  if(finCompacto){box.innerHTML=`<button type="button" class="fin-line" aria-expanded="false"><span class="fl-t">Finanças</span><span>livre <b class="${e.livre<0?'neg':''}">${brl(e.livre)}</b></span><span>semana <b class="${resta<0?'neg':''}">${brl(resta)}</b></span><span class="fl-c">▸</span></button>`;
+    box.querySelector('.fin-line').onclick=()=>{finCompacto=false;store.set('finCompacto','0');renderFin()};return}
   const pend=items.filter(x=>FIN_TIPOS.includes(x.tipo)&&x.fin==='pendente'&&x.status!=='arquivada').length;
   const ult=items.filter(x=>x.tipo==='gasto'&&x.status!=='arquivada').sort((a,b)=>(b.criado||'').localeCompare(a.criado||'')).slice(0,3);
-  box.innerHTML=`<div class="fin-head"><b>Finanças · ${FIN_MES.nome}</b><button type="button" id="fin-tg" aria-expanded="${finOpen}">${finOpen?'menos':'detalhes'}</button></div>
+  box.innerHTML=`<div class="fin-head"><b>Finanças · ${FIN_MES.nome}</b><span class="fin-acts"><button type="button" id="fin-tg" aria-expanded="${finOpen}">${finOpen?'menos':'detalhes'}</button><button type="button" id="fin-min" aria-label="Recolher finanças">▴ recolher</button></span></div>
   ${e.livre<0?'<p class="hint" style="color:var(--late)">Os gastos do mês já passam do salário menos o que você quer guardar. Detalhes na aba Resumo da planilha.</p>':''}
   <div class="fin-nums"><div class="fin-num${e.livre<0?' neg':''}"><small>Livre no mês</small><strong>${brl(e.livre)}</strong><span>já separando ${brl(e.guardar)} para guardar</span></div>
   <div class="fin-num${resta<0?' neg':''}"><small>Esta semana</small><strong>${brl(resta)}</strong><span>de ${brl(e.semana.teto)} até domingo</span></div></div>
   <div class="fin-bar${resta<0?' over':''}"><i style="width:${pct}%"></i></div>
+  ${resEst()?`<div class="fin-res"><span>Reserva de emergência</span><strong>${verReserva?brl2(Number(resEst().saldo)||0):'R$ ••••••'}</strong><button type="button" id="fin-olho" aria-label="${verReserva?'Esconder':'Mostrar'} reserva de emergência" aria-pressed="${verReserva}">${verReserva?OLHO_X:OLHO}</button></div>`:''}
   ${finOpen?`<div class="fin-more">${FIN_CARTOES.map(c=>`<div class="row"><span>${c}</span><span>${brl2(e.cartoes[c]||0)}</span></div>`).join('')}
    ${e.caixa?`<div class="row" style="margin-top:4px"><span>Paga neste mês (faturas do mês anterior)</span><span>${brl2(e.caixa.paga||0)}</span></div><div class="row"><span><b>Caixa do mês</b> (salário − o que vence)</span><span${e.caixa.saldo<0?' style="color:var(--late)"':''}>${brl2(e.caixa.saldo||0)}</span></div>`:''}
    <div class="row"><span>Cartões atualizados</span><span>${e.cartoes_em?esc(fmtWhen(e.cartoes_em.slice(0,10))):'—'}</span></div>
-   ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':''}${g.parcelas>1?' · 1/'+g.parcelas:''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
+   ${ult.length?'<div style="margin-top:4px">Últimos gastos</div>'+ult.map(g=>`<div class="row"><span>${esc(g.titulo)}${g.forma==='pix'?' · pix':g.forma==='reserva'?' · reserva':''}${g.parcelas>1?' · 1/'+g.parcelas:''}</span><span>${brl2(g.valor||0)}</span></div>`).join(''):''}
    <div>Para lançar, escreva “gastei 80 no mercado”. Para atualizar o cartão, “C6 3.900”.</div></div>`:''}
   ${pend?`<p class="hint">Já conta ${pend} lançamento${pend>1?'s':''} que ainda vai${pend>1?'o':''} para a planilha.</p>`:''}`;
-  box.querySelector('#fin-tg').onclick=()=>{finOpen=!finOpen;renderFin()}}
+  box.querySelector('#fin-tg').onclick=()=>{finOpen=!finOpen;renderFin()};
+  box.querySelector('#fin-min').onclick=()=>{finCompacto=true;finOpen=false;store.set('finCompacto','1');renderFin()};
+  const ol=box.querySelector('#fin-olho');if(ol)ol.onclick=()=>{verReserva=!verReserva;store.set('verReserva',verReserva?'1':'0');renderFin()}}
 function finChips(i,cl){
-  if(i.tipo==='gasto'){cl.append(el('span','',`${i.parcelas>1?i.parcelas+'x de ':''}${brl2(i.valor||0)}${i.parcelas>1?' (total '+brl2(i.total||i.valor*i.parcelas)+')':''} · ${i.forma==='pix'?'pix/débito':'cartão'+(i.cartao?' '+esc(i.cartao):'')}`))}
+  if(i.tipo==='gasto'){cl.append(el('span','',`${i.parcelas>1?i.parcelas+'x de ':''}${brl2(i.valor||0)}${i.parcelas>1?' (total '+brl2(i.total||i.valor*i.parcelas)+')':''} · ${i.forma==='pix'?'pix/débito':i.forma==='reserva'?'da reserva de emergência':'cartão'+(i.cartao?' '+esc(i.cartao):'')}`))}
   else cl.append(el('span','',Object.entries(i.cartoes||{}).map(([c,v])=>c+' '+brl2(v)).join(' · ')));
   cl.append(el('span','',i.fin==='na planilha'?'na planilha ✓':'vai para a planilha'));
   if(i.tipo==='gasto')cl.append(pill('desfazer',()=>finUndo(i),'','Desfazer este gasto'))}
@@ -577,17 +639,19 @@ function finChips(i,cl){
 const AG_CALS=[{id:'erick@nefex.io',origem:'nefex'},{id:'erickcamara3@gmail.com',origem:'pessoal'}];
 let agBusy=false;
 async function agendaRefresh(){if(!mcp||!navigator.onLine||agBusy)return;agBusy=true;
-  try{const d=todayISO();const evs=[];
+  try{const d=todayISO();const evs=[];let ok=0;
     for(const c of AG_CALS){try{const r=await mcp.callTool('Google Calendar','list_events',{calendarId:c.id,startTime:d+'T00:00:00',endTime:addDays(d,1)+'T00:00:00',orderBy:'startTime',pageSize:50});
       const p=(r&&r.payload)||{};for(const e of (p.events||[])){if(e.status==='cancelled'||!e.start||!e.start.dateTime)continue;
-        evs.push({inicio:e.start.dateTime.slice(0,16),fim:(e.end&&e.end.dateTime||'').slice(0,16),titulo:e.summary||null,origem:c.origem})}}catch(e){}}
+        evs.push({inicio:e.start.dateTime.slice(0,16),fim:(e.end&&e.end.dateTime||'').slice(0,16),titulo:e.summary||null,origem:c.origem})}ok++}catch(e){}}
+    if(!ok)return;
     evs.sort((a,b)=>a.inicio.localeCompare(b.inicio));
     const old=items.find(i=>i.id==='_agenda');
     if(old&&old.dia===d&&JSON.stringify(old.eventos)===JSON.stringify(evs))return;
     await write({k:'add',c:'itens',id:'_agenda',data:{tipo:'sistema',status:'sistema',dia:d,eventos:evs,atualizado:nowLocal()}})}
   catch(e){if(e&&['not_granted','server_not_connected','not_in_manifest'].includes(e.code))mcp=null}finally{agBusy=false}}
 function renderAgenda(){const box=$('#agenda');const a=items.find(i=>i.id==='_agenda');const d=todayISO();
-  const evs=a&&a.dia===d?(a.eventos||[]):[];if(!evs.length){box.hidden=true;return}box.hidden=false;
+  const evs=a&&a.dia===d?(a.eventos||[]):[];box.hidden=false;
+  if(!evs.length){box.innerHTML=`<div class="agenda-head"><span>Agenda de hoje</span><span>${a&&a.dia===d?'nada marcado':'ainda não carregou · toque em ↻ Atualizar'}</span></div>`;return}
   const agora=nowLocal();const h=s=>{const [hh,mm]=s.slice(11,16).split(':');return mm==='00'?(+hh)+'h':(+hh)+'h'+mm};
   const prox=evs.find(e=>(e.fim||e.inicio)>agora);
   box.innerHTML=`<div class="agenda-head"><span>Agenda de hoje</span><span>${prox?(prox.inicio<=agora?'agora: '+h(prox.inicio):'próxima às '+h(prox.inicio)):'acabou por hoje'}</span></div>
@@ -605,15 +669,16 @@ $('#composer').addEventListener('submit',async e=>{
   const g=guess(text);const online=navigator.onLine&&!!db&&!!sample;
   const doc={tipo:g.tipo,titulo:g.titulo,detalhe:g.detalhe,contexto:g.contexto,status:FIN_TIPOS.includes(g.tipo)?'registrado':g.tipo==='nota'?'guardada':'aberta',origem:'painel',bruto:text,criado:nowLocal(),classificando:online,classificar:!online&&!!(sample||!navigator.onLine)};
   if(g.quando)doc.quando=g.quando;if(g.lista)doc.lista=g.lista;
-  for(const k of ['valor','forma','cartao','cartoes','parcelas','total','categoria'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
+  for(const k of ['valor','forma','cartao','cartoes','parcelas','total','categoria','importante'])if(g[k]!=null)doc[k]=g[k];if(FIN_TIPOS.includes(g.tipo))doc.fin='pendente';
   const id=newId();const r=await write({k:'add',c:'itens',id,data:doc});
   if(r==='fail'){ta.value=text;grow();return}
   if(curTab()!=='conversa')toast('Anotado ✓');
   if(looksSecret(text))toast('Parece uma senha. O melhor lugar para ela é um gerenciador de senhas');
-  if(!online){if(FIN_TIPOS.includes(doc.tipo))finProcess(id,doc);return}
+  if(doc.tipo==='reserva'){await reservaAplicar(id,doc);await save(id,{classificando:false,classificar:false,status:'registrado'});return}
+  if(!online){if(doc.forma==='reserva')reservaAplicar(id,doc);if(FIN_TIPOS.includes(doc.tipo))finProcess(id,doc);return}
   const c=await classify(text);const patch={classificando:false};
-  if(c){if(c.tipo==='gasto'&&g.parcelas&&!c.parcelas){c.parcelas=g.parcelas;c.valor=g.valor;c.total=g.total;c.forma='cartao'}Object.assign(patch,c);patch.status=FIN_TIPOS.includes(c.tipo)?'registrado':c.tipo==='nota'?'guardada':'aberta';patch.quando=c.quando||g.quando||null;if(FIN_TIPOS.includes(c.tipo))patch.fin='pendente'}
-  await save(id,patch);const fim=Object.assign({},doc,patch);toCalendar(id,fim);if(FIN_TIPOS.includes(fim.tipo))finProcess(id,fim)});
+  if(c){if(c.tipo==='gasto'&&g.parcelas&&!c.parcelas){c.parcelas=g.parcelas;c.valor=g.valor;c.total=g.total;c.forma='cartao'}if(c.tipo==='gasto'&&g.forma==='reserva'){c.forma='reserva';c.cartao=null}Object.assign(patch,c);patch.status=FIN_TIPOS.includes(c.tipo)?'registrado':c.tipo==='nota'?'guardada':'aberta';patch.quando=c.quando||g.quando||null;if(FIN_TIPOS.includes(c.tipo))patch.fin='pendente'}
+  await save(id,patch);const fim=Object.assign({},doc,patch);toCalendar(id,fim);if(fim.tipo==='gasto'&&fim.forma==='reserva')await reservaAplicar(id,fim);if(FIN_TIPOS.includes(fim.tipo))finProcess(id,fim)});
 
 // ---------- funciona sem internet: cópia local + fila que sincroniza quando a conexão volta
 const newId=()=>'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
@@ -660,7 +725,7 @@ function ctxPills(i){const r=el('div','btnrow');r.append(el('span','lbl','Frente
 // ---------- linha de tarefa (resumida; toque para abrir)
 function bucket(i){if(!i.quando)return'sem';const t=todayISO(),d=i.quando.slice(0,10);return d<t?'late':d===t?'today':'next'}
 function itemLI(i,mode){
-  const c=normCtx(i.contexto);const li=el('li','c-'+c);if(i.status==='feita')li.classList.add('done');
+  const c=normCtx(i.contexto);const li=el('li','c-'+c);if(i.status==='feita')li.classList.add('done');if(i.importante)li.classList.add('imp');
   const b=bucket(i);const r=el('div','row1');
   const ck=el('button','check',i.status==='feita'?'✓':'');ck.type='button';ck.setAttribute('aria-label',(i.status==='feita'?'Reabrir: ':'Concluir: ')+i.titulo);
   ck.addEventListener('click',()=>save(i.id,i.status==='feita'?{status:'aberta',feito_em:null}:{status:'feita',feito_em:nowLocal()}));
@@ -669,6 +734,7 @@ function itemLI(i,mode){
   const meta=el('span','rmeta');const rk=mode==='hoje'&&b==='next'?risco(i):null;
   if(i.quando&&mode!=='hist')meta.append(el('span','when '+(b==='late'?'late':b==='today'?'today':rk?'risk'+(rk.urg?' urg':''):''),esc(rk?fmtWhen(i.quando)+' · '+(rk.urg?'faça hoje':rk.txt.split(' · ')[1]):fmtWhen(i.quando))));
   if(mode==='hist'){const dt=(i.status==='feita'?i.feito_em:null)||i.criado||'';meta.append(el('span','',esc(fmtWhen(dt.slice(0,10)))))}
+  if(i.importante&&i.status!=='feita')meta.prepend(el('span','flag','⚑ importante'));
   meta.append(el('span','dot'));
   li.dataset.id=i.id;
   if(mode==='hoje'&&i.status==='aberta'){const g=el('button','grip','⋮⋮');g.type='button';g.setAttribute('aria-label','Arrastar para mudar a prioridade: '+i.titulo);g.addEventListener('pointerdown',e=>dragStart(e,li));r.classList.add('g');r.append(g)}
@@ -686,20 +752,21 @@ function itemLI(i,mode){
       m.append(a,ctxPills(i));
       const z=el('div','btnrow');z.append(el('span','lbl','Ação'));
       if(i.status!=='feita')z.append(pill('✓ Feita',()=>save(i.id,{status:'feita',feito_em:nowLocal()}),'done'));
+      z.append(pill(i.importante?'⚑ Tirar de importante':'⚑ Importante',()=>{save(i.id,{importante:!i.importante});toast(i.importante?'Saiu dos importantes':'Marcada como importante. Fica no topo')},i.importante?'on':'warn'));
       if(i.status==='triagem')z.append(pill('Manter',()=>save(i.id,{status:'aberta'})));
       z.append(pill('Arquivar',()=>{save(i.id,{status:'arquivada'});expanded=null;toast('Arquivada. Está no Histórico')},'warn'));
       m.append(z)}
     li.append(m)}
   return li}
 function block(key,title,cls,list,mode,collapsedDefault){
-  const s=el('section');s.dataset.block=key;const h=el('div','block-head');const open=key in openBlocks?openBlocks[key]:!collapsedDefault;
+  const s=el('section');s.dataset.block=key;if(key==='imp')s.className='imp-sec';const h=el('div','block-head');const open=key in openBlocks?openBlocks[key]:!collapsedDefault;
   const tg=el('button','toggle',`<h2><span class="${cls||''}">${open?'▾':'▸'} ${title}</span><span class="n">${list.length}</span></h2>`);tg.type='button';tg.setAttribute('aria-expanded',String(open));
   tg.addEventListener('click',()=>{openBlocks[key]=!open;store.set('open',JSON.stringify(openBlocks));renderHoje()});h.append(tg);s.append(h);
   if(key==='next'){const nr=list.filter(i=>risco(i)).length;if(nr){const sx=sextaSemana();s.append(el('p','riskline',`⚠ ${nr} vence${nr>1?'m':''} ${sx?'até sexta':'em breve'}. Se não fizer, entra${nr>1?'m':''} em atraso.`))}}
   if(open){if(list.length){const ul=el('ul','items');ul.dataset.block=key;list.forEach(i=>ul.append(itemLI(i,mode)));s.append(ul)}else s.append(el('p','empty','Nada aqui.'))}
   return s}
 // ---------- arrastar para priorizar / mudar de bloco
-let drag=null,renderDepois=false;const DRAG_BLOCKS=['foco','next','sem'];
+let drag=null,renderDepois=false;const DRAG_BLOCKS=['imp','foco','next','sem'];
 function dragStart(e,li){if(e.button>0)return;e.preventDefault();
   drag={li,id:li.dataset.id,from:li.parentNode.dataset.block,y0:e.clientY,moved:false,head:null,pid:e.pointerId};
   const mv=ev=>{if(ev.pointerId===drag?.pid){ev.preventDefault();dragMove(ev)}},up=ev=>{if(drag&&ev.pointerId!==drag.pid)return;window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);window.removeEventListener('touchmove',tm);dragEnd(ev.type==='pointercancel')},tm=ev=>{if(drag&&drag.moved)ev.preventDefault()};
@@ -723,7 +790,9 @@ async function dragEnd(cancel){const d=drag;drag=null;document.body.classList.re
   if(d.head){const ul=document.querySelector(`#hoje-blocks ul.items[data-block="${to}"]`);ids=ul?[...ul.children].map(x=>x.dataset.id).filter(x=>x!==d.id):[];ids.push(d.id)}
   else ids=[...d.li.parentNode.children].map(x=>x.dataset.id);
   const td=todayISO();const patch={};
-  if(to!==d.from){
+  if(to==='imp'&&d.from!=='imp')patch.importante=true;
+  else if(d.from==='imp'&&to!=='imp')patch.importante=false;
+  if(to!==d.from&&to!=='imp'){
     if(to==='sem')patch.quando=null;
     else if(to==='foco'){const b=bucket(it);if(b!=='late'&&b!=='today')patch.quando=td+(it.quando&&it.quando.length>10?it.quando.slice(10):'')}
     else if(to==='next'){const k=ids.indexOf(d.id);const viz=[ids[k-1],ids[k+1]].map(x=>items.find(y=>y.id===x)).find(y=>y&&y.quando);
@@ -732,29 +801,28 @@ async function dragEnd(cancel){const d=drag;drag=null;document.body.classList.re
   for(const [x,p] of muda){applyLocal({k:'update',c:'itens',id:x.id,data:p})}
   renderAll();
   for(const [x,p] of muda){await save(x.id,p);if(p.quando)toCalendar(x.id,Object.assign({},x,p))}
-  if(to!==d.from)toast(to==='sem'?'Ficou sem data':to==='foco'?'Foi para hoje':'Agendado para '+fmtWhen(patch.quando||''))}
+  if(to==='imp'&&d.from!=='imp')toast('Marcada como importante');else if(to!==d.from)toast(to==='sem'?'Ficou sem data':to==='foco'?'Foi para hoje':'Agendado para '+fmtWhen(patch.quando||''))}
 const sortQ=(a,b)=>(a.quando||'9999').localeCompare(b.quando||'9999')||(b.criado||'').localeCompare(a.criado||'');
 const sortP=(a,b)=>((a.ordem??1e9)-(b.ordem??1e9))||sortQ(a,b);
 
 // ---------- Hoje
 function renderHoje(){
   if(drag){renderDepois=true;return}
-  const y=window.scrollY;renderAgenda();renderFin();ctxBar($('#ctxbar-hoje'),()=>{renderHoje();renderHist()});
+  const y=window.scrollY;renderAgenda();renderFin();
   const tasks=items.filter(i=>i.tipo==='tarefa'||i.tipo==='lembrete');
   const open=tasks.filter(i=>i.status==='aberta'||i.status==='triagem');
-  // resumo por frente
-  const rows=CTX.map(c=>{const o=open.filter(i=>normCtx(i.contexto)===c.id);return{c,late:o.filter(i=>bucket(i)==='late').length,today:o.filter(i=>bucket(i)==='today').length,all:o.length}});
-  const tot={late:rows.reduce((a,r)=>a+r.late,0),today:rows.reduce((a,r)=>a+r.today,0),all:rows.reduce((a,r)=>a+r.all,0)};
-  const n=(v,cls)=>`<td class="${v?cls||'':'zero'}">${v}</td>`;
-  $('#summary').innerHTML=`<table><thead><tr><th>Frente</th><th>Atrasadas</th><th>Hoje</th><th>Abertas</th></tr></thead><tbody>${rows.map(r=>`<tr class="row c-${r.c.id}" data-c="${r.c.id}" tabindex="0"><td><span class="ctxname"><span class="dot"></span>${esc(r.c.label)}</span></td>${n(r.late,'late')}${n(r.today)}${n(r.all)}</tr>`).join('')}<tr><td>Total</td>${n(tot.late,'late')}${n(tot.today)}${n(tot.all)}</tr></tbody></table>`;
-  $('#summary').querySelectorAll('tr.row').forEach(tr=>{const go=()=>{ctxFilter=ctxFilter===tr.dataset.c?'':tr.dataset.c;store.set('ctx',ctxFilter);renderHoje();renderHist()};tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter')go()})});
+  const cnt={'*':{all:0,late:0}};CTX.forEach(c=>cnt[c.id]={all:0,late:0});
+  open.forEach(i=>{const k=normCtx(i.contexto);const L=bucket(i)==='late'?1:0;cnt[k].all++;cnt[k].late+=L;cnt['*'].all++;cnt['*'].late+=L});
+  ctxBar($('#ctxbar-hoje'),()=>{renderHoje();renderHist()},cnt);$('#summary').hidden=true;
   const f=open.filter(inCtx);
-  const foco=f.filter(i=>i.status==='aberta'&&(bucket(i)==='late'||bucket(i)==='today')).sort(sortP);
-  const next=f.filter(i=>i.status==='aberta'&&bucket(i)==='next').sort(sortP);
-  const sem=f.filter(i=>i.status==='aberta'&&bucket(i)==='sem').sort(sortP);
+  const imp=f.filter(i=>i.status==='aberta'&&i.importante).sort((a,b)=>((a.ordem??1e9)-(b.ordem??1e9))||(a.quando||'9999').localeCompare(b.quando||'9999'));
+  const foco=f.filter(i=>i.status==='aberta'&&!i.importante&&(bucket(i)==='late'||bucket(i)==='today')).sort(sortP);
+  const next=f.filter(i=>i.status==='aberta'&&!i.importante&&bucket(i)==='next').sort(sortP);
+  const sem=f.filter(i=>i.status==='aberta'&&!i.importante&&bucket(i)==='sem').sort(sortP);
   const tri=f.filter(i=>i.status==='triagem');
   const doneToday=tasks.filter(inCtx).filter(i=>i.status==='feita'&&(i.feito_em||'').slice(0,10)===todayISO());
   const box=$('#hoje-blocks');box.innerHTML='';
+  if(imp.length)box.append(block('imp','⚑ Importante','tag-late',imp,'hoje',false));
   const fs=block('foco','Foco de hoje','tag-today',foco,'hoje',false);
   if(!foco.length){const p=fs.querySelector('.empty');if(p)p.textContent='Nada atrasado nem para hoje'+(ctxFilter?' em '+ctxLabel(ctxFilter):'')+'. Toque numa tarefa abaixo e use “Hoje”.'}
   box.append(fs);
@@ -790,6 +858,7 @@ function renderConversa(){
     if(i.classificando)cl.textContent='organizando…';
     else if(i.status==='arquivada')cl.append('arquivada ',pill('↩ restaurar',()=>save(i.id,{status:i.tipo==='nota'?'guardada':'aberta'})));
     else if(FIN_TIPOS.includes(i.tipo)){finChips(i,cl)}
+    else if(i.tipo==='reserva'){cl.append(el('span','',i.saldo!=null?'reserva: saldo atualizado':(i.delta>=0?'reserva: +':'reserva: −')+(verReserva?brl2(Math.abs(i.delta||0)):'••••')),el('span','',i.reserva_ok?'aplicado ✓':'aplicando…'))}
     else if(editCtx===i.id){CTX.forEach(x=>cl.append(pill(`<span class="dot"></span>${esc(x.label)}`,()=>{editCtx=null;save(i.id,{contexto:x.id})},'c-'+x.id+(x.id===c?' on':''))))}
     else{
       cl.append(pill(tipoLabel[i.tipo]||i.tipo,()=>{const nx=TIPOS[(TIPOS.indexOf(i.tipo)+1)%TIPOS.length];const p={tipo:nx,status:nx==='nota'?'guardada':'aberta'};if(nx==='compra')p.lista='Compras';if(nx==='lista'&&!i.lista)p.lista='Ideias';save(i.id,p)},'','Mudar tipo'));
